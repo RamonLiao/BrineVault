@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sui:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm:*)",
+      "Bash(ls:*)",
+      "Bash(curl -s \"https://api.github.com/search/repositories?q=seal+threshold+encryption+sui&sort=stars&per_page=10\" 2>/dev/null | head -100)",
+      "Bash(curl -s \"https://docs.sui.io/search?q=seal\" 2>/dev/null | head -50)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/MystenLabs/sui/main/README.md\" 2>/dev/null | grep -i seal | head -20)",
+      "Bash(curl -s \"https://api.github.com/repos/MystenLabs/sui/contents/docs\" 2>/dev/null | grep -i seal)",
+      "Bash(curl -s \"https://api.github.com/repos/MystenLabs/sui/search?q=seal+threshold&type=code\" 2>/dev/null 2>&1 | head -50)",
+      "Bash(curl -s \"https://api.github.com/search/repositories?q=seal+threshold+encryption+cryptography&sort=stars&per_page=20\" 2>/dev/null | jq '.items[] | {name, url: .html_url, description, stars: .stargazers_count}' 2>/dev/null | head -100)",
+      "Bash(curl -s \"https://api.github.com/search/repositories?q=threshold+secret+sharing+sui&sort=stars&per_page=10\" 2>/dev/null | jq '.items[] | {name, url: .html_url}' 2>/dev/null)",
+      "Bash(curl -s \"https://api.github.com/repos/MystenLabs/sui/issues?q=seal+threshold&per_page=10\" 2>/dev/null | jq '.[0:5]' 2>/dev/null)",
+      "Bash(curl -s \"https://blog.sui.io\" 2>/dev/null | grep -i \"seal\\\\|threshold.*encrypt\" | head -10)",
+      "Bash(curl -s \"https://api.github.com/repos/MystenLabs/sui/contents/crates\" 2>/dev/null | jq '.[] | select\\(.name | contains\\(\"seal\"\\) or contains\\(\"encrypt\"\\)\\) | .name')",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(python3 << 'PYEOF'\nimport json\n\ndef extract_assistant_text\\(filepath\\):\n    texts = []\n    with open\\(filepath\\) as f:\n        for line in f:\n            line = line.strip\\(\\)\n            if not line:\n                continue\n            obj = json.loads\\(line\\)\n            if obj.get\\('type'\\) == 'assistant':\n                content = obj.get\\('message', {}\\).get\\('content', ''\\)\n                if isinstance\\(content, list\\):\n                    for block in content:\n                        if isinstance\\(block, dict\\) and block.get\\('type'\\) == 'text':\n                            texts.append\\(block['text']\\)\n                elif isinstance\\(content, str\\):\n                    texts.append\\(content\\)\n    return '\\\\n'.join\\(texts\\)\n\nchunk1 = extract_assistant_text\\('/private/tmp/claude-501/-Users-ramonliao-Documents-Code-Project-Web3-BlockchainDev-SUI-Projects-RWA-DataRoom/tasks/aa134fb1de37070bf.output'\\)\nchunk2 = extract_assistant_text\\('/private/tmp/claude-501/-Users-ramonliao-Documents-Code-Project-Web3-BlockchainDev-SUI-Projects-RWA-DataRoom/tasks/a2697e90000aae0b0.output'\\)\n\nwith open\\('/tmp/chunks3_6_raw.md'\\) as f:\n    chunk3_6 = f.read\\(\\)\n\ncombined = chunk1 + \"\\\\n\\\\n---\\\\n\\\\n\" + chunk2 + \"\\\\n\\\\n---\\\\n\\\\n\" + chunk3_6\n\noutpath = '/Users/ramonliao/Documents/Code/Project/Web3/BlockchainDev/SUI/Projects/RWA_DataRoom/docs/superpowers/plans/2026-03-11-move-smart-contract.md'\nwith open\\(outpath, 'w'\\) as f:\n    f.write\\(combined\\)\n\nimport os\nstat = os.stat\\(outpath\\)\nline_count = combined.count\\('\\\\n'\\) + \\(1 if combined and not combined.endswith\\('\\\\n'\\) else 0\\)\nprint\\(f\"Lines: {line_count}\"\\)\nprint\\(f\"Bytes: {stat.st_size}\"\\)\nPYEOF)",
+      "Bash(git init:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "sui-dev-agents@sui-dev-agents": true,
+    "playwright@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  }
+}
