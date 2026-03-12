@@ -9,7 +9,7 @@ use rwa_dataroom::errors;
 use rwa_dataroom::events;
 use rwa_dataroom::admin::{Self, AdminConfig};
 use rwa_dataroom::dataroom::{Self, DataRoom};
-use rwa_dataroom::ic_decision::ICDecision;
+use rwa_dataroom::ic_decision::{Self, ICDecision};
 use rwa_dataroom::document::Document;
 
 // ============================================================
@@ -149,6 +149,37 @@ public(package) fun set_state(pool: &mut Pool, new_state: u8, clock: &Clock) {
 }
 
 // ============================================================
+// State Assertions (package-only)
+// ============================================================
+
+public(package) fun assert_state(pool: &Pool, expected: u8) {
+    assert!(pool.current_state == expected, errors::invalid_state_transition());
+}
+
+public(package) fun assert_state_one_of(pool: &Pool, s1: u8, s2: u8) {
+    assert!(
+        pool.current_state == s1 || pool.current_state == s2,
+        errors::invalid_state_transition(),
+    );
+}
+
+// ============================================================
+// IC Decision Query (package-only)
+// ============================================================
+
+public(package) fun has_ic_approval(pool: &Pool): bool {
+    let mut i = 0u64;
+    while (i < pool.ic_decision_count) {
+        let decision: &ICDecision = df::borrow(&pool.id, i);
+        if (ic_decision::decision_type(decision) == types::ic_approve()) {
+            return true
+        };
+        i = i + 1;
+    };
+    false
+}
+
+// ============================================================
 // Role Check via DataRoom (package-only convenience)
 // ============================================================
 
@@ -235,15 +266,26 @@ public fun destroy_for_testing(pool: Pool) {
 #[test_only]
 public fun record_ic_decision_for_testing(
     pool: &mut Pool,
-    _decision_type: u8,
-    _decision_text: String,
-    _pdf_blob_id: String,
-    _committee: vector<address>,
-    _votes: vector<u8>,
-    _related_doc_ids: vector<ID>,
-    _clock: &Clock,
-    _ctx: &mut TxContext,
+    decision_type: u8,
+    decision_text: String,
+    pdf_blob_id: String,
+    committee: vector<address>,
+    votes: vector<u8>,
+    related_doc_ids: vector<ID>,
+    clock: &Clock,
+    ctx: &mut TxContext,
 ) {
-    // Stub — will be fully implemented in later chunks
-    pool.ic_decision_count = pool.ic_decision_count + 1;
+    let idx = pool.ic_decision_count;
+    let decision = ic_decision::new(
+        idx,
+        decision_type,
+        decision_text,
+        pdf_blob_id,
+        ctx.sender(),
+        committee,
+        votes,
+        clock.timestamp_ms(),
+        related_doc_ids,
+    );
+    attach_ic_decision(pool, decision, clock);
 }

@@ -6,6 +6,7 @@ use std::string;
 use rwa_dataroom::pool::{Self, Pool};
 use rwa_dataroom::admin::AdminConfig;
 use rwa_dataroom::document_entry;
+use rwa_dataroom::document;
 use rwa_dataroom::types;
 
 // ============================================================
@@ -100,7 +101,7 @@ public fun create_test_document_in_folder(
 // IC Decision Helpers
 // ============================================================
 
-/// Record a test IC approval on the pool.
+/// Record a test IC approval on the pool (creates real ICDecision).
 public fun record_test_ic_approval(
     pool: &mut Pool,
     clock: &Clock,
@@ -109,14 +110,55 @@ public fun record_test_ic_approval(
     pool::record_ic_decision_for_testing(
         pool,
         types::ic_approve(),
-        string::utf8(b"Approved"),
-        string::utf8(b""),
+        string::utf8(b"Approved by committee"),
+        string::utf8(b"walrus_pdf_approval"),
         vector[ctx.sender()],
         vector[1],
         vector[],
         clock,
         ctx,
     );
+}
+
+/// Record a test IC rejection on the pool.
+public fun record_test_ic_rejection(
+    pool: &mut Pool,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    pool::record_ic_decision_for_testing(
+        pool,
+        types::ic_reject(),
+        string::utf8(b"Rejected"),
+        string::utf8(b"walrus_pdf_rejection"),
+        vector[ctx.sender()],
+        vector[0],
+        vector[],
+        clock,
+        ctx,
+    );
+}
+
+/// Create a test document and approve it via review. Returns doc_id.
+/// Needs a reviewer (different from pool owner) to already be a member.
+public fun create_and_approve_document(
+    admin_config: &AdminConfig,
+    pool: &mut Pool,
+    reviewer: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    let doc_id = create_test_document(admin_config, pool, clock, ctx);
+    // Submit approved review (caller must be the reviewer)
+    let doc_mut = pool::borrow_document_mut(pool, doc_id);
+    document::submit_review(
+        doc_mut,
+        reviewer,
+        types::review_approved(),
+        option::none(),
+        clock,
+    );
+    doc_id
 }
 
 // ============================================================

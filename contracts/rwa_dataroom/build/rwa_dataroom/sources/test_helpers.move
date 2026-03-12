@@ -4,6 +4,9 @@ module rwa_dataroom::test_helpers;
 use sui::clock::Clock;
 use std::string;
 use rwa_dataroom::pool::{Self, Pool};
+use rwa_dataroom::admin::AdminConfig;
+use rwa_dataroom::document_entry;
+use rwa_dataroom::document;
 use rwa_dataroom::types;
 
 // ============================================================
@@ -52,34 +55,53 @@ public fun destroy_pool(pool: Pool) {
 }
 
 // ============================================================
-// Document Helpers (stubs — full implementation in Chunk 4)
+// Document Helpers
 // ============================================================
 
 const CONTENT_HASH: vector<u8> = x"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
 /// Create a test document in the given pool. Returns the document ID.
-/// Stub — returns pool ID as placeholder until Chunk 4 entry functions are implemented.
+/// Uses the real create_document entry function.
 public fun create_test_document(
+    admin_config: &AdminConfig,
     pool: &mut Pool,
-    _folder_id: u64,
-    _uploader: address,
-    _clock: &Clock,
-    _ctx: &mut TxContext,
+    clock: &Clock,
+    ctx: &mut TxContext,
 ): ID {
-    object::id(pool)
+    create_test_document_in_folder(admin_config, pool, 0, clock, ctx)
 }
 
-/// Get the ID of the last created document in a pool.
-/// Stub — returns pool ID as placeholder until Chunk 4.
-public fun last_created_doc_id(pool: &Pool): ID {
-    object::id(pool)
+/// Create a test document in a specific folder.
+public fun create_test_document_in_folder(
+    admin_config: &AdminConfig,
+    pool: &mut Pool,
+    folder_id: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    document_entry::create_document(
+        admin_config,
+        pool,
+        folder_id,
+        types::doc_type_legal_agreement(),
+        string::utf8(b"Test Document"),
+        true, // required_flag
+        types::role_all(), // visible_to_roles
+        string::utf8(b"walrus_blob_test_123"),
+        CONTENT_HASH,
+        1024,
+        string::utf8(b"Initial upload"),
+        vector[string::utf8(b"test")],
+        clock,
+        ctx,
+    )
 }
 
 // ============================================================
 // IC Decision Helpers
 // ============================================================
 
-/// Record a test IC approval on the pool.
+/// Record a test IC approval on the pool (creates real ICDecision).
 public fun record_test_ic_approval(
     pool: &mut Pool,
     clock: &Clock,
@@ -88,14 +110,55 @@ public fun record_test_ic_approval(
     pool::record_ic_decision_for_testing(
         pool,
         types::ic_approve(),
-        string::utf8(b"Approved"),
-        string::utf8(b""),
+        string::utf8(b"Approved by committee"),
+        string::utf8(b"walrus_pdf_approval"),
         vector[ctx.sender()],
         vector[1],
         vector[],
         clock,
         ctx,
     );
+}
+
+/// Record a test IC rejection on the pool.
+public fun record_test_ic_rejection(
+    pool: &mut Pool,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    pool::record_ic_decision_for_testing(
+        pool,
+        types::ic_reject(),
+        string::utf8(b"Rejected"),
+        string::utf8(b"walrus_pdf_rejection"),
+        vector[ctx.sender()],
+        vector[0],
+        vector[],
+        clock,
+        ctx,
+    );
+}
+
+/// Create a test document and approve it via review. Returns doc_id.
+/// Needs a reviewer (different from pool owner) to already be a member.
+public fun create_and_approve_document(
+    admin_config: &AdminConfig,
+    pool: &mut Pool,
+    reviewer: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    let doc_id = create_test_document(admin_config, pool, clock, ctx);
+    // Submit approved review (caller must be the reviewer)
+    let doc_mut = pool::borrow_document_mut(pool, doc_id);
+    document::submit_review(
+        doc_mut,
+        reviewer,
+        types::review_approved(),
+        option::none(),
+        clock,
+    );
+    doc_id
 }
 
 // ============================================================

@@ -27,6 +27,7 @@ public struct Document has key, store {
     created_by: address,
     created_at: u64,
     last_updated_at: u64,
+    approval_count: u64,
 }
 
 public struct DocVersion has store, drop {
@@ -95,6 +96,7 @@ public(package) fun new(
         created_by: ctx.sender(),
         created_at: now,
         last_updated_at: now,
+        approval_count: 0,
     };
 
     // Attach first version as dynamic field keyed by version number
@@ -185,11 +187,22 @@ public(package) fun submit_review(
     };
 
     // Overwrite previous review by this reviewer if exists
+    let is_approved = status == types::review_approved();
     if (df::exists_(&doc.id, reviewer)) {
         let existing: &mut ReviewRecord = df::borrow_mut(&mut doc.id, reviewer);
+        let was_approved = existing.status == types::review_approved();
         *existing = record;
+        // Update approval_count based on transition
+        if (was_approved && !is_approved) {
+            doc.approval_count = doc.approval_count - 1;
+        } else if (!was_approved && is_approved) {
+            doc.approval_count = doc.approval_count + 1;
+        };
     } else {
         df::add(&mut doc.id, reviewer, record);
+        if (is_approved) {
+            doc.approval_count = doc.approval_count + 1;
+        };
     };
 
     doc.last_updated_at = now;
@@ -238,6 +251,8 @@ public fun tags(doc: &Document): &vector<String> { &doc.tags }
 public fun created_by(doc: &Document): address { doc.created_by }
 public fun created_at(doc: &Document): u64 { doc.created_at }
 public fun last_updated_at(doc: &Document): u64 { doc.last_updated_at }
+public fun approval_count(doc: &Document): u64 { doc.approval_count }
+public fun has_any_approval(doc: &Document): bool { doc.approval_count > 0 }
 public(package) fun uid(doc: &Document): &UID { &doc.id }
 public(package) fun uid_mut(doc: &mut Document): &mut UID { &mut doc.id }
 

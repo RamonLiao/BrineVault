@@ -165,6 +165,33 @@ public fun create_admin_config_with_max_members_for_testing(
 }
 
 #[test_only]
+public fun create_admin_config_with_max_versions_for_testing(
+    max_versions: u64,
+    ctx: &mut TxContext,
+): AdminConfig {
+    AdminConfig {
+        id: object::new(ctx),
+        paused: false,
+        pause_authority: ctx.sender(),
+        platform_address: ctx.sender(),
+        max_members_per_room: 200,
+        max_doc_versions: max_versions,
+    }
+}
+
+#[test_only]
+public fun create_paused_admin_config_for_testing(ctx: &mut TxContext): AdminConfig {
+    AdminConfig {
+        id: object::new(ctx),
+        paused: true,
+        pause_authority: ctx.sender(),
+        platform_address: ctx.sender(),
+        max_members_per_room: 200,
+        max_doc_versions: 500,
+    }
+}
+
+#[test_only]
 public fun destroy_admin_config_for_testing(config: AdminConfig) {
     let AdminConfig { id, .. } = config;
     object::delete(id);

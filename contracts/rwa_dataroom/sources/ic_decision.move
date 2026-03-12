@@ -1,6 +1,7 @@
 module rwa_dataroom::ic_decision;
 
 use std::string::String;
+use rwa_dataroom::errors;
 
 // ============================================================
 // Structs
@@ -33,6 +34,9 @@ public(package) fun new(
     created_at: u64,
     related_doc_ids: vector<ID>,
 ): ICDecision {
+    assert!(decision_type <= 2, errors::invalid_config());
+    assert!(committee_members.length() == votes.length(), errors::invalid_config());
+    assert!(!committee_members.is_empty(), errors::empty_committee());
     ICDecision {
         index,
         decision_type,
