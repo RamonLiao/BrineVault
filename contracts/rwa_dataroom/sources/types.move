@@ -81,6 +81,10 @@ public fun is_valid_doc_type(doc_type: u8): bool {
     doc_type <= 9
 }
 
+public fun is_valid_role(role: u8): bool {
+    role > 0 && role <= ROLE_ALL
+}
+
 // ========== Assert Helpers ==========
 public fun assert_valid_encryption_scheme(scheme: u8) {
     assert!(is_valid_encryption_scheme(scheme), 600); // EInvalidEncryptionScheme

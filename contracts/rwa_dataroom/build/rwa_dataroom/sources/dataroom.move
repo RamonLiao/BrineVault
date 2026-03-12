@@ -210,6 +210,45 @@ public(package) fun revoke_member(
     events::emit_member_removed(dataroom.pool_id, addr, removed_by, now);
 }
 
+/// Reactivate a previously revoked member with new role and tags.
+public(package) fun reactivate_member(
+    dataroom: &mut DataRoom,
+    addr: address,
+    role: u8,
+    added_by: address,
+    tags: vector<String>,
+    clock: &Clock,
+) {
+    let now = clock.timestamp_ms();
+    let m = &mut dataroom.members[addr];
+    m.is_active = true;
+    m.role = role;
+    m.added_by = added_by;
+    m.tags = tags;
+    m.revoked_at = option::none();
+    dataroom.member_count = dataroom.member_count + 1;
+    dataroom.last_updated_at = now;
+
+    events::emit_member_added(dataroom.pool_id, addr, role, added_by, now);
+}
+
+/// Update a member's role. Returns old role for event emission.
+public(package) fun update_member_role(
+    dataroom: &mut DataRoom,
+    addr: address,
+    new_role: u8,
+    clock: &Clock,
+): u8 {
+    let now = clock.timestamp_ms();
+    assert!(dataroom.members.contains(addr), errors::not_member());
+    let m = &mut dataroom.members[addr];
+    assert!(m.is_active, errors::not_member());
+    let old_role = m.role;
+    m.role = new_role;
+    dataroom.last_updated_at = now;
+    old_role
+}
+
 // ============================================================
 // Folder Management (package-only)
 // ============================================================
@@ -289,6 +328,11 @@ public(package) fun has_folder_key(
     df::exists_(&dataroom.id, tag)
 }
 
+/// Construct a FolderKeyTag (for test/read access).
+public fun folder_key_tag(folder_id: u64, member: address): FolderKeyTag {
+    FolderKeyTag { folder_id, member }
+}
+
 // ============================================================
 // Seal Policy
 // ============================================================
@@ -307,8 +351,10 @@ public(package) fun set_seal_policy_id(
 // ============================================================
 
 public fun pool_id(dr: &DataRoom): ID { dr.pool_id }
+public fun dataroom_id(dr: &DataRoom): ID { object::id(dr) }
 public fun owner(dr: &DataRoom): address { dr.owner }
 public fun member_count(dr: &DataRoom): u64 { dr.member_count }
+public fun has_member(dr: &DataRoom, addr: address): bool { dr.members.contains(addr) }
 public fun custom_folder_count(dr: &DataRoom): u64 { dr.custom_folder_count }
 public fun seal_policy_id(dr: &DataRoom): &Option<ID> { &dr.seal_policy_id }
 public fun created_at(dr: &DataRoom): u64 { dr.created_at }

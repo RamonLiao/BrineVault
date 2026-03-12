@@ -136,3 +136,36 @@ public(package) fun pause_authority(config: &AdminConfig): address {
 public fun init_for_testing(ctx: &mut TxContext) {
     init(ctx);
 }
+
+#[test_only]
+public fun create_admin_config_for_testing(ctx: &mut TxContext): AdminConfig {
+    AdminConfig {
+        id: object::new(ctx),
+        paused: false,
+        pause_authority: ctx.sender(),
+        platform_address: ctx.sender(),
+        max_members_per_room: 200,
+        max_doc_versions: 500,
+    }
+}
+
+#[test_only]
+public fun create_admin_config_with_max_members_for_testing(
+    max_members: u64,
+    ctx: &mut TxContext,
+): AdminConfig {
+    AdminConfig {
+        id: object::new(ctx),
+        paused: false,
+        pause_authority: ctx.sender(),
+        platform_address: ctx.sender(),
+        max_members_per_room: max_members,
+        max_doc_versions: 500,
+    }
+}
+
+#[test_only]
+public fun destroy_admin_config_for_testing(config: AdminConfig) {
+    let AdminConfig { id, .. } = config;
+    object::delete(id);
+}
