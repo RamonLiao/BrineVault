@@ -241,3 +241,15 @@ public fun last_updated_at(doc: &Document): u64 { doc.last_updated_at }
 public(package) fun uid(doc: &Document): &UID { &doc.id }
 public(package) fun uid_mut(doc: &mut Document): &mut UID { &mut doc.id }
 
+/// Get the uploader of the current version (for self-review prevention).
+public(package) fun current_version_uploader(doc: &Document): address {
+    let ver: &DocVersion = df::borrow(&doc.id, doc.current_version);
+    ver.uploaded_by
+}
+
+/// Set the required_flag on a document.
+public(package) fun set_required_flag(doc: &mut Document, required: bool, clock: &Clock) {
+    doc.required_flag = required;
+    doc.last_updated_at = clock.timestamp_ms();
+}
+

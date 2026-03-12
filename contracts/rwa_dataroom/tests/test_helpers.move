@@ -4,6 +4,8 @@ module rwa_dataroom::test_helpers;
 use sui::clock::Clock;
 use std::string;
 use rwa_dataroom::pool::{Self, Pool};
+use rwa_dataroom::admin::AdminConfig;
+use rwa_dataroom::document_entry;
 use rwa_dataroom::types;
 
 // ============================================================
@@ -52,27 +54,46 @@ public fun destroy_pool(pool: Pool) {
 }
 
 // ============================================================
-// Document Helpers (stubs — full implementation in Chunk 4)
+// Document Helpers
 // ============================================================
 
 const CONTENT_HASH: vector<u8> = x"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
 /// Create a test document in the given pool. Returns the document ID.
-/// Stub — returns pool ID as placeholder until Chunk 4 entry functions are implemented.
+/// Uses the real create_document entry function.
 public fun create_test_document(
+    admin_config: &AdminConfig,
     pool: &mut Pool,
-    _folder_id: u64,
-    _uploader: address,
-    _clock: &Clock,
-    _ctx: &mut TxContext,
+    clock: &Clock,
+    ctx: &mut TxContext,
 ): ID {
-    object::id(pool)
+    create_test_document_in_folder(admin_config, pool, 0, clock, ctx)
 }
 
-/// Get the ID of the last created document in a pool.
-/// Stub — returns pool ID as placeholder until Chunk 4.
-public fun last_created_doc_id(pool: &Pool): ID {
-    object::id(pool)
+/// Create a test document in a specific folder.
+public fun create_test_document_in_folder(
+    admin_config: &AdminConfig,
+    pool: &mut Pool,
+    folder_id: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    document_entry::create_document(
+        admin_config,
+        pool,
+        folder_id,
+        types::doc_type_legal_agreement(),
+        string::utf8(b"Test Document"),
+        true, // required_flag
+        types::role_all(), // visible_to_roles
+        string::utf8(b"walrus_blob_test_123"),
+        CONTENT_HASH,
+        1024,
+        string::utf8(b"Initial upload"),
+        vector[string::utf8(b"test")],
+        clock,
+        ctx,
+    )
 }
 
 // ============================================================

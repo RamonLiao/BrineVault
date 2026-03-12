@@ -8,6 +8,7 @@ const ROLE_OWNER:     u8 = 8;
 const ROLE_AUDITOR:   u8 = 16;
 const ROLE_ORG_ADMIN: u8 = 32;
 
+const ROLE_REVIEWER_UP: u8 = 46; // REVIEWER | EDITOR | OWNER | ORG_ADMIN
 const ROLE_EDITOR_UP:  u8 = 12;  // EDITOR | OWNER
 const ROLE_OWNER_UP:   u8 = 40;  // OWNER | ORG_ADMIN
 const ROLE_ALL:        u8 = 63;
@@ -109,6 +110,7 @@ public fun role_editor(): u8 { ROLE_EDITOR }
 public fun role_owner(): u8 { ROLE_OWNER }
 public fun role_auditor(): u8 { ROLE_AUDITOR }
 public fun role_org_admin(): u8 { ROLE_ORG_ADMIN }
+public fun role_reviewer_up(): u8 { ROLE_REVIEWER_UP }
 public fun role_owner_up(): u8 { ROLE_OWNER_UP }
 public fun role_editor_up(): u8 { ROLE_EDITOR_UP }
 public fun role_all(): u8 { ROLE_ALL }
