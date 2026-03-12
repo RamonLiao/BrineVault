@@ -3,11 +3,8 @@ module rwa_dataroom::test_helpers;
 
 use sui::clock::Clock;
 use std::string;
-use rwa_dataroom::admin;
 use rwa_dataroom::pool::{Self, Pool};
-use rwa_dataroom::dataroom;
 use rwa_dataroom::types;
-use rwa_dataroom::document;
 
 // ============================================================
 // Pool Helpers
@@ -55,40 +52,27 @@ public fun destroy_pool(pool: Pool) {
 }
 
 // ============================================================
-// Document Helpers
+// Document Helpers (stubs — full implementation in Chunk 4)
 // ============================================================
 
 const CONTENT_HASH: vector<u8> = x"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
 /// Create a test document in the given pool. Returns the document ID.
+/// Stub — returns pool ID as placeholder until Chunk 4 entry functions are implemented.
 public fun create_test_document(
     pool: &mut Pool,
-    folder_id: u64,
-    uploader: address,
-    clock: &Clock,
-    ctx: &mut TxContext,
+    _folder_id: u64,
+    _uploader: address,
+    _clock: &Clock,
+    _ctx: &mut TxContext,
 ): ID {
-    document::create_document_internal(
-        pool,
-        folder_id,
-        0, // FINANCIAL_STATEMENT
-        string::utf8(b"Test Document"),
-        false,
-        types::role_all(),
-        string::utf8(b"blob_id_123"),
-        CONTENT_HASH,
-        1024,
-        string::utf8(b"Initial version"),
-        vector[],
-        uploader,
-        clock,
-        ctx,
-    )
+    object::id(pool)
 }
 
-/// Get the ID of the last created document in a pool (by doc_count).
+/// Get the ID of the last created document in a pool.
+/// Stub — returns pool ID as placeholder until Chunk 4.
 public fun last_created_doc_id(pool: &Pool): ID {
-    document::last_doc_id(pool)
+    object::id(pool)
 }
 
 // ============================================================
