@@ -13,18 +13,19 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@mysten/sui": "^1.45.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@rwa-dataroom/db": "workspace:*",
     "@rwa-dataroom/shared": "workspace:*",
-    "@mysten/sui": "^1.45.0",
     "cookie-parser": "^1.4.7",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.0",
     "jose": "^6.0.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
