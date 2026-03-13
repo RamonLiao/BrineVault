@@ -50,6 +50,10 @@ docker-compose.override.yml
 infra/monitoring/grafana/data/
 infra/monitoring/prometheus/data/
 
+# Worktrees
+.worktrees/
+.claude/worktrees/
+
 # Test coverage
 coverage/
 .nyc_output/
