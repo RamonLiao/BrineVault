@@ -1,2 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Secrets
+*.pem
+*.key
+credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Move build artefacts
+contracts/*/build/
+
+# Task tracking (personal)
 tasks/progress.md
 tasks/lessons.md
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
