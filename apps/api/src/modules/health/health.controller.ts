@@ -3,8 +3,9 @@ import { DATABASE, REDIS } from '../../common/constants.js';
 import type { Database } from '@rwa-dataroom/db';
 import type { Redis } from 'ioredis';
 import { sql } from 'drizzle-orm';
+import { Public } from '../../common/decorators/public.decorator.js';
 
-// TODO: Add @Public() decorator once it's built in Task 8
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(

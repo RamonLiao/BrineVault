@@ -13,18 +13,19 @@ import { AuthService } from './auth.service.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { authVerifyRequestSchema } from '@rwa-dataroom/shared';
 import type { AuthVerifyRequest } from '@rwa-dataroom/shared';
+import { Public } from '../../common/decorators/public.decorator.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // TODO: Add @Public() decorator (Task 8) to skip AuthGuard
+  @Public()
   @Get('challenge')
   async getChallenge(@Req() req: Request) {
     return this.authService.generateChallenge(req.ip ?? '0.0.0.0');
   }
 
-  // TODO: Add @Public() decorator (Task 8)
+  @Public()
   @Post('verify')
   @UsePipes(new ZodValidationPipe(authVerifyRequestSchema))
   async verify(@Body() dto: AuthVerifyRequest, @Req() req: Request, @Res() res: Response) {
@@ -43,7 +44,7 @@ export class AuthController {
     return res.json({ access_token: result.accessToken, user: result.user });
   }
 
-  // TODO: Add @Public() decorator (Task 8)
+  @Public()
   @Post('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
     const refreshToken = (req as any).cookies?.refresh_token as string | undefined;
@@ -88,6 +89,7 @@ export class AuthController {
     return res.status(204).send();
   }
 
+  @Public()
   @Get('csrf-token')
   async getCsrfToken() {
     return { token: this.authService.generateCsrfToken() };
