@@ -1,0 +1,85 @@
+# Deploy to Staging — runs on merge to main
+# Build Docker images -> Push to GHCR -> Deploy
+
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: api
+            dockerfile: infra/docker/Dockerfile.api
+          - service: indexer
+            dockerfile: infra/docker/Dockerfile.indexer
+          - service: web
+            dockerfile: infra/docker/Dockerfile.web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=sha
+            type=raw,value=staging
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.STAGING_API_URL }}
+            NEXT_PUBLIC_SUI_NETWORK=testnet
+            NEXT_PUBLIC_PACKAGE_ID=${{ vars.STAGING_PACKAGE_ID }}
+            NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=${{ vars.STAGING_WALRUS_AGGREGATOR_URL }}
+            NEXT_PUBLIC_WALRUS_PUBLISHER_URL=${{ vars.STAGING_WALRUS_PUBLISHER_URL }}
+
+  deploy:
+    name: Deploy to Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy placeholder
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          echo "Deploying to staging environment..."
+          echo "Commit: $DEPLOY_SHA"
+          echo "TODO: Add deployment steps (ECS update-service, kubectl rollout, etc.)"

@@ -1,0 +1,37 @@
+# Keep Docker build context small
+node_modules
+.git
+.github
+.claude
+.turbo
+.next
+out
+coverage
+*.log
+
+# Move contracts (not needed in app Docker images)
+contracts/*/build/
+
+# Docs
+docs/
+specs/
+Idea/
+
+# Task tracking
+tasks/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Env files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Monitoring data
+infra/monitoring/grafana/data/
+infra/monitoring/prometheus/data/

@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────
+# Dockerfile.api — Multi-stage NestJS build
+# ─────────────────────────────────────────────
+
+# ── Base ──────────────────────────────────────
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+
+# ── Dependencies ──────────────────────────────
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/db/package.json packages/db/
+COPY apps/api/package.json apps/api/
+RUN pnpm install --frozen-lockfile
+
+# ── Development (hot-reload via volume mounts) ─
+FROM deps AS development
+COPY packages/ packages/
+COPY apps/api/ apps/api/
+EXPOSE 3001
+CMD ["pnpm", "--filter", "@rwa-dataroom/api", "dev"]
+
+# ── Build ─────────────────────────────────────
+FROM deps AS build
+COPY packages/ packages/
+COPY apps/api/ apps/api/
+RUN pnpm --filter @rwa-dataroom/shared build && \
+    pnpm --filter @rwa-dataroom/db build && \
+    pnpm --filter @rwa-dataroom/api build
+
+# ── Production ────────────────────────────────
+FROM node:20-alpine AS production
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+RUN addgroup -g 1001 -S appgroup && adduser -S appuser -u 1001 -G appgroup
+WORKDIR /app
+
+COPY --from=build /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/package.json /app/turbo.json ./
+COPY --from=build /app/packages/shared/package.json packages/shared/
+COPY --from=build /app/packages/shared/dist packages/shared/dist/
+COPY --from=build /app/packages/db/package.json packages/db/
+COPY --from=build /app/packages/db/dist packages/db/dist/
+COPY --from=build /app/apps/api/package.json apps/api/
+COPY --from=build /app/apps/api/dist apps/api/dist/
+
+RUN pnpm install --frozen-lockfile --prod
+
+USER appuser
+EXPOSE 3001
+ENV NODE_ENV=production
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://localhost:3001/health || exit 1
+
+CMD ["node", "apps/api/dist/main.js"]

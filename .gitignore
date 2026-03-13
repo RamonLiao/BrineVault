@@ -4,16 +4,24 @@ node_modules/
 # Build output
 dist/
 .turbo/
+.next/
+out/
 
-# Environment
+# Environment — NEVER commit real secrets
 .env
 .env.local
 .env.*.local
+.env.production
+# Note: infra/env/.env.development and .env.test are safe dev defaults (no secrets)
+# Note: infra/env/.env.example is a template (no values)
 
 # Secrets
 *.pem
 *.key
+*.p12
+*.pfx
 credentials.json
+service-account*.json
 
 # IDE
 .idea/
@@ -21,6 +29,7 @@ credentials.json
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
 
 # Move build artefacts
 contracts/*/build/
@@ -33,3 +42,19 @@ tasks/lessons.md
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Docker
+docker-compose.override.yml
+
+# Monitoring data (persisted volumes)
+infra/monitoring/grafana/data/
+infra/monitoring/prometheus/data/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# OS files
+*.DS_Store
+*.Spotlight-V100
+*.Trashes

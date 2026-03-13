@@ -1,0 +1,68 @@
+# ─────────────────────────────────────────────
+# Dockerfile.web — Multi-stage Next.js build
+# ─────────────────────────────────────────────
+
+# ── Base ──────────────────────────────────────
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+
+# ── Dependencies ──────────────────────────────
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/encryption-sdk/package.json packages/encryption-sdk/
+COPY packages/walrus-sdk/package.json packages/walrus-sdk/
+COPY apps/web/package.json apps/web/
+RUN pnpm install --frozen-lockfile
+
+# ── Development (hot-reload via volume mounts) ─
+FROM deps AS development
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@rwa-dataroom/web", "dev"]
+
+# ── Build ─────────────────────────────────────
+FROM deps AS build
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+
+# Public env vars must be available at build time
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SUI_NETWORK
+ARG NEXT_PUBLIC_PACKAGE_ID
+ARG NEXT_PUBLIC_WALRUS_AGGREGATOR_URL
+ARG NEXT_PUBLIC_WALRUS_PUBLISHER_URL
+
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SUI_NETWORK=${NEXT_PUBLIC_SUI_NETWORK}
+ENV NEXT_PUBLIC_PACKAGE_ID=${NEXT_PUBLIC_PACKAGE_ID}
+ENV NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=${NEXT_PUBLIC_WALRUS_AGGREGATOR_URL}
+ENV NEXT_PUBLIC_WALRUS_PUBLISHER_URL=${NEXT_PUBLIC_WALRUS_PUBLISHER_URL}
+
+RUN pnpm --filter @rwa-dataroom/shared build && \
+    pnpm --filter @rwa-dataroom/encryption-sdk build && \
+    pnpm --filter @rwa-dataroom/walrus-sdk build && \
+    pnpm --filter @rwa-dataroom/web build
+
+# ── Production ────────────────────────────────
+FROM node:20-alpine AS production
+RUN addgroup -g 1001 -S appgroup && adduser -S appuser -u 1001 -G appgroup
+WORKDIR /app
+
+# Next.js standalone output
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
+
+USER appuser
+EXPOSE 3000
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://localhost:3000/api/health || exit 1
+
+CMD ["node", "apps/web/server.js"]

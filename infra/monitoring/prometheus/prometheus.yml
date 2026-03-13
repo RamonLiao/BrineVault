@@ -1,0 +1,38 @@
+# Prometheus configuration for RWA DataRoom
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # NestJS API metrics
+  - job_name: "rwa-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:3001"]
+        labels:
+          service: api
+
+  # Indexer metrics
+  - job_name: "rwa-indexer"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["indexer:3002"]
+        labels:
+          service: indexer
+
+  # PostgreSQL exporter (if deployed)
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: postgres
+
+  # Redis exporter (if deployed)
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          service: redis

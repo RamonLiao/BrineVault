@@ -1,0 +1,162 @@
+# RWA Credit Data Room — Local Development Stack
+# Usage: docker compose -f infra/docker/docker-compose.yml up
+#
+# Services: PostgreSQL 16, Redis 7, API (NestJS), Indexer, Web (Next.js)
+# Env file:  infra/env/.env.development (loaded automatically)
+
+name: rwa-dataroom
+
+services:
+  # ─────────────────────────────────────────────
+  # PostgreSQL 16 — read-optimised cache
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: rwa-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rwa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rwa_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-rwa_dataroom}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rwa} -d ${POSTGRES_DB:-rwa_dataroom}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # Redis 7 — session store, cache, rate limiting
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: rwa-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # API — NestJS backend
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+      target: development
+    container_name: rwa-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-3001}:3001"
+    env_file:
+      - ../env/.env.development
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rwa}:${POSTGRES_PASSWORD:-rwa_dev_password}@postgres:5432/${POSTGRES_DB:-rwa_dataroom}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src:ro
+      - ../../packages:/app/packages:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────
+  # Indexer — Sui event indexer worker
+  # ─────────────────────────────────────────────
+  indexer:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.indexer
+      target: development
+    container_name: rwa-indexer
+    restart: unless-stopped
+    env_file:
+      - ../env/.env.development
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rwa}:${POSTGRES_PASSWORD:-rwa_dev_password}@postgres:5432/${POSTGRES_DB:-rwa_dataroom}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ../../apps/indexer/src:/app/apps/indexer/src:ro
+      - ../../packages:/app/packages:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────
+  # Web — Next.js frontend
+  # ─────────────────────────────────────────────
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      target: development
+    container_name: rwa-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    env_file:
+      - ../env/.env.development
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3001}
+    volumes:
+      - ../../apps/web/src:/app/apps/web/src:ro
+      - ../../packages:/app/packages:ro
+    depends_on:
+      - api
+
+  # ─────────────────────────────────────────────
+  # Monitoring (optional — start with: docker compose --profile monitoring up)
+  # ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: rwa-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: rwa-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "3100:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

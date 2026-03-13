@@ -1,0 +1,108 @@
+# Deploy to Production — runs on release tags (v*)
+# Build Docker images -> Push to GHCR -> Deploy
+
+name: Deploy Production
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Gate: ensure CI passed
+  verify:
+    name: Verify CI Status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = context.sha;
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref,
+            });
+            const ciRun = checkRuns.check_runs.find(r => r.name === 'TypeScript Pipeline');
+            if (!ciRun || ciRun.conclusion !== 'success') {
+              core.setFailed('CI has not passed for this commit. Aborting production deploy.');
+            }
+
+  build-and-push:
+    name: Build & Push Images
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: api
+            dockerfile: infra/docker/Dockerfile.api
+          - service: indexer
+            dockerfile: infra/docker/Dockerfile.indexer
+          - service: web
+            dockerfile: infra/docker/Dockerfile.web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.PRODUCTION_API_URL }}
+            NEXT_PUBLIC_SUI_NETWORK=mainnet
+            NEXT_PUBLIC_PACKAGE_ID=${{ vars.PRODUCTION_PACKAGE_ID }}
+            NEXT_PUBLIC_WALRUS_AGGREGATOR_URL=${{ vars.PRODUCTION_WALRUS_AGGREGATOR_URL }}
+            NEXT_PUBLIC_WALRUS_PUBLISHER_URL=${{ vars.PRODUCTION_WALRUS_PUBLISHER_URL }}
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy placeholder
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          echo "Deploying to production environment..."
+          echo "Release: $RELEASE_TAG"
+          echo "TODO: Add deployment steps (ECS update-service, kubectl rollout, etc.)"
