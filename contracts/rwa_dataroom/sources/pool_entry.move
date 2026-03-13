@@ -130,7 +130,7 @@ public entry fun record_ic_approval(
     pool::set_state(pool, types::pool_state_approved_internal(), clock);
 
     let pool_id = pool::pool_id(pool);
-    events::emit_ic_decision_recorded(pool_id, idx, types::ic_approve(), caller, now);
+    events::emit_ic_decision_created(pool_id, idx, types::ic_approve(), caller, now);
     events::emit_pool_state_changed(
         pool_id,
         types::pool_state_ic_review(),
@@ -187,7 +187,7 @@ public entry fun record_ic_rejection(
     pool::set_state(pool, types::pool_state_rejected(), clock);
 
     let pool_id = pool::pool_id(pool);
-    events::emit_ic_decision_recorded(pool_id, idx, types::ic_reject(), caller, now);
+    events::emit_ic_decision_created(pool_id, idx, types::ic_reject(), caller, now);
     events::emit_pool_state_changed(
         pool_id,
         types::pool_state_ic_review(),
@@ -245,7 +245,7 @@ public entry fun record_ic_request_changes(
     pool::set_state(pool, types::pool_state_dd_in_progress(), clock);
 
     let pool_id = pool::pool_id(pool);
-    events::emit_ic_decision_recorded(pool_id, idx, types::ic_request_changes(), caller, now);
+    events::emit_ic_decision_created(pool_id, idx, types::ic_request_changes(), caller, now);
     events::emit_pool_state_changed(
         pool_id,
         types::pool_state_ic_review(),

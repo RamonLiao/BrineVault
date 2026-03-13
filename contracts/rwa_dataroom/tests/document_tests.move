@@ -34,7 +34,7 @@ fun test_create_document_success() {
     let doc_id = document_entry::create_document(
         &admin_config,
         &mut pool,
-        0, // default folder (Financial)
+        0, // default folder (Legal)
         types::doc_type_legal_agreement(),
         string::utf8(b"Term Sheet"),
         true,

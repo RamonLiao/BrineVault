@@ -663,7 +663,7 @@ fun test_store_folder_key_on_default_folder() {
     let admin_config = admin::create_admin_config_for_testing(scenario.ctx());
     let mut pool = test_helpers::create_test_pool(@0xA, &clock, scenario.ctx());
 
-    // Store key for ALICE on default folder 0 ("Financial")
+    // Store key for ALICE on default folder 0 ("Legal")
     scenario.next_tx(@0xA);
     dataroom_entry::store_encrypted_folder_key(
         &admin_config, &mut pool, 0, @0xA, b"default_folder_key__padding_here", &clock, scenario.ctx(),

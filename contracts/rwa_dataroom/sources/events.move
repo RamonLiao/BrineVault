@@ -14,6 +14,13 @@ public struct PoolCreated has copy, drop {
     timestamp: u64,
 }
 
+public struct DataRoomCreated has copy, drop {
+    pool_id: ID,
+    dataroom_id: ID,
+    owner: address,
+    timestamp: u64,
+}
+
 public struct PoolStateChanged has copy, drop {
     pool_id: ID,
     from_state: u8,
@@ -90,7 +97,7 @@ public struct DocumentArchived has copy, drop {
     timestamp: u64,
 }
 
-public struct ICDecisionRecorded has copy, drop {
+public struct ICDecisionCreated has copy, drop {
     pool_id: ID,
     decision_index: u64,
     decision_type: u8,
@@ -146,6 +153,20 @@ public(package) fun emit_pool_created(
         org_id_hash,
         created_by,
         encryption_scheme,
+        timestamp,
+    });
+}
+
+public(package) fun emit_dataroom_created(
+    pool_id: ID,
+    dataroom_id: ID,
+    owner: address,
+    timestamp: u64,
+) {
+    event::emit(DataRoomCreated {
+        pool_id,
+        dataroom_id,
+        owner,
         timestamp,
     });
 }
@@ -302,14 +323,14 @@ public(package) fun emit_document_archived(
     });
 }
 
-public(package) fun emit_ic_decision_recorded(
+public(package) fun emit_ic_decision_created(
     pool_id: ID,
     decision_index: u64,
     decision_type: u8,
     created_by: address,
     timestamp: u64,
 ) {
-    event::emit(ICDecisionRecorded {
+    event::emit(ICDecisionCreated {
         pool_id,
         decision_index,
         decision_type,

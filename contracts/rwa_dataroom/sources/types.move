@@ -8,7 +8,7 @@ const ROLE_OWNER:     u8 = 8;
 const ROLE_AUDITOR:   u8 = 16;
 const ROLE_ORG_ADMIN: u8 = 32;
 
-const ROLE_REVIEWER_UP: u8 = 46; // REVIEWER | EDITOR | OWNER | ORG_ADMIN
+const ROLE_REVIEWER_UP: u8 = 42; // REVIEWER | OWNER | ORG_ADMIN (EDITOR is lateral, not above REVIEWER)
 const ROLE_EDITOR_UP:  u8 = 12;  // EDITOR | OWNER
 const ROLE_OWNER_UP:   u8 = 40;  // OWNER | ORG_ADMIN
 const ROLE_ALL:        u8 = 63;

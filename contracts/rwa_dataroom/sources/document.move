@@ -13,7 +13,7 @@ use rwa_dataroom::events;
 
 public struct Document has key, store {
     id: UID,
-    dataroom_id: ID,
+    pool_id: ID,
     folder_id: u64,
     doc_type: u8,
     title: String,
@@ -57,7 +57,7 @@ public struct DocKey has copy, drop, store {
 // ============================================================
 
 public(package) fun new(
-    dataroom_id: ID,
+    pool_id: ID,
     folder_id: u64,
     doc_type: u8,
     title: String,
@@ -82,7 +82,7 @@ public(package) fun new(
 
     let mut doc = Document {
         id: object::new(ctx),
-        dataroom_id,
+        pool_id,
         folder_id,
         doc_type,
         title,
@@ -149,7 +149,7 @@ public(package) fun add_version(
     doc.last_updated_at = now;
 
     events::emit_document_version_added(
-        doc.dataroom_id,
+        doc.pool_id,
         object::id(doc),
         new_version,
         walrus_blob_id,
@@ -208,7 +208,7 @@ public(package) fun submit_review(
     doc.last_updated_at = now;
 
     events::emit_document_reviewed(
-        doc.dataroom_id,
+        doc.pool_id,
         object::id(doc),
         reviewer,
         status,
@@ -237,7 +237,7 @@ public(package) fun archive(doc: &mut Document, clock: &Clock) {
 // ============================================================
 
 public fun doc_id(doc: &Document): ID { object::id(doc) }
-public fun dataroom_id(doc: &Document): ID { doc.dataroom_id }
+public fun pool_id(doc: &Document): ID { doc.pool_id }
 public fun folder_id(doc: &Document): u64 { doc.folder_id }
 public fun doc_type(doc: &Document): u8 { doc.doc_type }
 public fun title(doc: &Document): &String { &doc.title }

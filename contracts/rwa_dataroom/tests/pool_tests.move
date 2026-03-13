@@ -206,7 +206,7 @@ fun test_borrow_dataroom_returns_correct_ref() {
         // DataRoom's pool_id should match Pool's id
         assert!(dataroom::pool_id(dr) == pool::pool_id(&pool));
 
-        // Default folders: 5 folders (IDs 0-4), custom_folder_count starts at 100
+        // Default folders: 6 folders (IDs 0-5), custom_folder_count starts at 100
         assert!(dataroom::custom_folder_count(dr) == 100);
 
         test_scenario::return_shared(pool);

@@ -27,6 +27,18 @@ fun test_has_role_multi_bit_match() {
 }
 
 #[test]
+fun test_has_role_reviewer_up() {
+    // ROLE_REVIEWER_UP = REVIEWER | OWNER | ORG_ADMIN = 42
+    assert!(types::has_role(types::role_reviewer(), types::role_reviewer_up()));
+    assert!(types::has_role(types::role_owner(), types::role_reviewer_up()));
+    assert!(types::has_role(types::role_org_admin(), types::role_reviewer_up()));
+    // EDITOR is lateral, not in reviewer_up
+    assert!(!types::has_role(types::role_editor(), types::role_reviewer_up()));
+    assert!(!types::has_role(types::role_viewer(), types::role_reviewer_up()));
+    assert!(!types::has_role(types::role_auditor(), types::role_reviewer_up()));
+}
+
+#[test]
 fun test_has_role_editor_up() {
     // ROLE_EDITOR_UP = EDITOR | OWNER = 12
     assert!(types::has_role(types::role_editor(), types::role_editor_up()));
@@ -101,6 +113,7 @@ fun test_role_bitmask_values() {
     assert!(types::role_owner()     == 8);
     assert!(types::role_auditor()   == 16);
     assert!(types::role_org_admin() == 32);
+    assert!(types::role_reviewer_up() == 42); // REVIEWER | OWNER | ORG_ADMIN
     assert!(types::role_editor_up() == 12);
     assert!(types::role_owner_up()  == 40);
     assert!(types::role_all()       == 63);

@@ -30,6 +30,7 @@ public struct Pool has key {
     encryption_scheme: u8,
     tags: vector<String>,
     ic_decision_count: u64,
+    has_ic_approval_cached: bool,
     last_updated_at: u64,
 }
 
@@ -73,6 +74,7 @@ public entry fun create_pool(
         encryption_scheme,
         tags,
         ic_decision_count: 0,
+        has_ic_approval_cached: false,
         last_updated_at: now,
     };
 
@@ -128,9 +130,13 @@ public(package) fun attach_ic_decision(
     decision: ICDecision,
     clock: &Clock,
 ) {
+    let is_approval = ic_decision::decision_type(&decision) == types::ic_approve();
     let idx = pool.ic_decision_count;
     df::add(&mut pool.id, idx, decision);
     pool.ic_decision_count = idx + 1;
+    if (is_approval) {
+        pool.has_ic_approval_cached = true;
+    };
     pool.last_updated_at = clock.timestamp_ms();
 }
 
@@ -144,8 +150,30 @@ public(package) fun ic_decision_count(pool: &Pool): u64 {
 
 public(package) fun set_state(pool: &mut Pool, new_state: u8, clock: &Clock) {
     types::assert_valid_pool_state(new_state);
+    assert!(is_valid_transition(pool.current_state, new_state), errors::invalid_state_transition());
     pool.current_state = new_state;
     pool.last_updated_at = clock.timestamp_ms();
+}
+
+/// Whitelist of legal state transitions.
+fun is_valid_transition(from: u8, to: u8): bool {
+    let draft = types::pool_state_draft();
+    let dd    = types::pool_state_dd_in_progress();
+    let ic    = types::pool_state_ic_review();
+    let approved = types::pool_state_approved_internal();
+    let ready = types::pool_state_ready_to_issue();
+    let rejected = types::pool_state_rejected();
+    let cancelled = types::pool_state_cancelled();
+    let issued = types::pool_state_issued();
+    let closed = types::pool_state_closed();
+
+    (from == draft && (to == dd || to == cancelled)) ||
+    (from == dd && (to == ic || to == cancelled)) ||
+    (from == ic && (to == approved || to == rejected || to == dd)) ||
+    (from == approved && to == ready) ||
+    (from == ready && to == issued) ||
+    (from == rejected && to == draft) ||
+    (from == issued && to == closed)
 }
 
 // ============================================================
@@ -168,15 +196,7 @@ public(package) fun assert_state_one_of(pool: &Pool, s1: u8, s2: u8) {
 // ============================================================
 
 public(package) fun has_ic_approval(pool: &Pool): bool {
-    let mut i = 0u64;
-    while (i < pool.ic_decision_count) {
-        let decision: &ICDecision = df::borrow(&pool.id, i);
-        if (ic_decision::decision_type(decision) == types::ic_approve()) {
-            return true
-        };
-        i = i + 1;
-    };
-    false
+    pool.has_ic_approval_cached
 }
 
 // ============================================================
@@ -204,6 +224,7 @@ public fun expected_maturity_date(pool: &Pool): u64 { pool.expected_maturity_dat
 public fun created_at(pool: &Pool): u64 { pool.created_at }
 public fun created_by(pool: &Pool): address { pool.created_by }
 public fun tags(pool: &Pool): &vector<String> { &pool.tags }
+public fun has_ic_approval_cached(pool: &Pool): bool { pool.has_ic_approval_cached }
 public fun last_updated_at(pool: &Pool): u64 { pool.last_updated_at }
 public(package) fun uid(pool: &Pool): &UID { &pool.id }
 public(package) fun uid_mut(pool: &mut Pool): &mut UID { &mut pool.id }
@@ -238,6 +259,7 @@ public fun create_pool_for_testing(
         encryption_scheme,
         current_state: types::pool_state_draft(),
         ic_decision_count: 0,
+        has_ic_approval_cached: false,
         tags,
         created_at: now,
         created_by: creator,

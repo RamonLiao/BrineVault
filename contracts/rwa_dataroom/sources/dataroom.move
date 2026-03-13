@@ -93,6 +93,8 @@ public(package) fun new(
     // Create default folders
     create_default_folders(&mut dataroom, owner, now);
 
+    let dataroom_id = object::id(&dataroom);
+    events::emit_dataroom_created(pool_id, dataroom_id, owner, now);
     events::emit_member_added(pool_id, owner, types::role_owner(), owner, now);
 
     dataroom
@@ -108,11 +110,12 @@ fun create_default_folders(
     now: u64,
 ) {
     let names = vector[
-        b"Financial".to_string(),
         b"Legal".to_string(),
-        b"KYC".to_string(),
+        b"Financials".to_string(),
         b"Collateral".to_string(),
+        b"Compliance".to_string(),
         b"Reports".to_string(),
+        b"Misc".to_string(),
     ];
 
     let mut i = 0u64;
