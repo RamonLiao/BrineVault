@@ -1,0 +1,27 @@
+{
+  "name": "@rwa-dataroom/indexer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.20.0",
+    "@rwa-dataroom/db": "workspace:*",
+    "@rwa-dataroom/shared": "workspace:*",
+    "ioredis": "^5.4.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
