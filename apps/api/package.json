@@ -20,6 +20,7 @@
     "@rwa-dataroom/db": "workspace:*",
     "@rwa-dataroom/shared": "workspace:*",
     "cookie-parser": "^1.4.7",
+    "drizzle-orm": "^0.39.0",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.0",
     "jose": "^6.0.0",
