@@ -5,6 +5,9 @@ import {
   InviteCodesRepository,
   MembersRepository,
   PoolsRepository,
+  DataroomsRepository,
+  DocumentsRepository,
+  DocumentVersionsRepository,
 } from '@rwa-dataroom/db';
 import type { Database } from '@rwa-dataroom/db';
 import { DATABASE } from '../../common/constants.js';
@@ -15,6 +18,9 @@ const repositories = [
   InviteCodesRepository,
   MembersRepository,
   PoolsRepository,
+  DataroomsRepository,
+  DocumentsRepository,
+  DocumentVersionsRepository,
 ];
 
 @Global()

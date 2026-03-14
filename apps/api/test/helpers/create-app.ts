@@ -17,17 +17,22 @@ import { GlobalExceptionFilter } from '../../src/common/filters/global-exception
 import { LoggingInterceptor } from '../../src/common/interceptors/logging.interceptor.js';
 import { AuthGuard } from '../../src/common/guards/auth.guard.js';
 import { CsrfGuard } from '../../src/common/guards/csrf.guard.js';
-import { DATABASE, REDIS } from '../../src/common/constants.js';
+import { DATABASE, REDIS, SUI_TX_SERVICE } from '../../src/common/constants.js';
 import {
   UsersRepository,
   OrganizationsRepository,
   InviteCodesRepository,
   MembersRepository,
+  PoolsRepository,
+  DataroomsRepository,
+  DocumentsRepository,
+  DocumentVersionsRepository,
 } from '@rwa-dataroom/db';
 
 import {
   createMockRepos,
   createMockDb,
+  createMockSuiTxService,
   type MockRepos,
 } from './mock-providers.js';
 
@@ -39,6 +44,7 @@ export interface TestApp {
   repos: MockRepos;
   db: ReturnType<typeof createMockDb>;
   redis: InstanceType<typeof RedisMock>;
+  suiTxService: ReturnType<typeof createMockSuiTxService>;
 }
 
 export async function createTestApp(overrides?: {
@@ -49,6 +55,7 @@ export async function createTestApp(overrides?: {
   const repos = createMockRepos();
   const db = createMockDb(overrides?.dbOverrides);
   const redis = new RedisMock();
+  const suiTxService = createMockSuiTxService();
 
   const moduleRef = await Test.createTestingModule({
     controllers: [
@@ -71,6 +78,11 @@ export async function createTestApp(overrides?: {
       { provide: OrganizationsRepository, useValue: repos.orgsRepo },
       { provide: InviteCodesRepository, useValue: repos.inviteCodesRepo },
       { provide: MembersRepository, useValue: repos.membersRepo },
+      { provide: PoolsRepository, useValue: repos.poolsRepo },
+      { provide: DataroomsRepository, useValue: repos.dataroomsRepo },
+      { provide: DocumentsRepository, useValue: repos.documentsRepo },
+      { provide: DocumentVersionsRepository, useValue: repos.documentVersionsRepo },
+      { provide: SUI_TX_SERVICE, useValue: suiTxService },
       // Global middleware
       { provide: APP_FILTER, useClass: GlobalExceptionFilter },
       { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
@@ -88,5 +100,5 @@ export async function createTestApp(overrides?: {
 
   const agent = supertest(app.getHttpServer());
 
-  return { app, agent, repos, db, redis };
+  return { app, agent, repos, db, redis, suiTxService };
 }

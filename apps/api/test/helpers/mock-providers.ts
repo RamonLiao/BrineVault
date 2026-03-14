@@ -7,6 +7,10 @@ export interface MockRepos {
   orgsRepo: Record<string, ReturnType<typeof vi.fn>>;
   inviteCodesRepo: Record<string, ReturnType<typeof vi.fn>>;
   membersRepo: Record<string, ReturnType<typeof vi.fn>>;
+  poolsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  dataroomsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  documentsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  documentVersionsRepo: Record<string, ReturnType<typeof vi.fn>>;
 }
 
 export function createMockRepos(): MockRepos {
@@ -32,6 +36,27 @@ export function createMockRepos(): MockRepos {
       findByDataroomAndAddress: vi.fn(),
       findActiveByPoolId: vi.fn(),
       findByPoolId: vi.fn(),
+    },
+    poolsRepo: {
+      findById: vi.fn(),
+      findBySuiObjectId: vi.fn(),
+      findByOrgId: vi.fn(),
+      countByOrgId: vi.fn(),
+    },
+    dataroomsRepo: {
+      findById: vi.fn(),
+      findBySuiObjectId: vi.fn(),
+      findByPoolId: vi.fn(),
+    },
+    documentsRepo: {
+      findById: vi.fn(),
+      findBySuiObjectId: vi.fn(),
+      findByPoolId: vi.fn(),
+      countByPoolId: vi.fn(),
+    },
+    documentVersionsRepo: {
+      findByDocumentId: vi.fn(),
+      findByDocumentAndVersion: vi.fn(),
     },
   };
 }
@@ -69,6 +94,27 @@ export function createMockDb(overrides: { execute?: any; select?: any } = {}) {
     insert: vi.fn((..._args: any[]) => chainable([])),
     update: vi.fn((..._args: any[]) => chainable([])),
     delete: vi.fn((..._args: any[]) => chainable([])),
+  };
+}
+
+// ─── SuiTxService Mock ───────────────────────────────────────
+
+export function createMockSuiTxService() {
+  return {
+    buildCreatePoolTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildStateTransitionTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildCancelPoolTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildAddMemberTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildRemoveMemberTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildUpdateMemberRoleTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildCreateFolderTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildCreateDocumentTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildAddVersionTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildArchiveDocumentTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    submitSignedTx: vi.fn().mockResolvedValue({
+      digest: '0xmockdigest',
+      effects: { status: { status: 'success' } },
+    }),
   };
 }
 
