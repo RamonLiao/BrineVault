@@ -1,0 +1,83 @@
+import { vi } from 'vitest';
+
+// ─── Repository Mocks ────────────────────────────────────────
+
+export interface MockRepos {
+  usersRepo: Record<string, ReturnType<typeof vi.fn>>;
+  orgsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  inviteCodesRepo: Record<string, ReturnType<typeof vi.fn>>;
+  membersRepo: Record<string, ReturnType<typeof vi.fn>>;
+}
+
+export function createMockRepos(): MockRepos {
+  return {
+    usersRepo: {
+      findById: vi.fn(),
+      findByWalletAddress: vi.fn(),
+      upsertByWallet: vi.fn(),
+      update: vi.fn(),
+    },
+    orgsRepo: {
+      findById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    inviteCodesRepo: {
+      findByCode: vi.fn(),
+      findByOrgId: vi.fn(),
+      create: vi.fn(),
+      incrementUses: vi.fn(),
+    },
+    membersRepo: {
+      findByDataroomAndAddress: vi.fn(),
+      findActiveByPoolId: vi.fn(),
+      findByPoolId: vi.fn(),
+    },
+  };
+}
+
+// ─── Mock Drizzle DB ─────────────────────────────────────────
+
+/**
+ * Creates a Proxy-based mock that supports any Drizzle chain:
+ *   db.select({...}).from(table).where(...).limit(n).offset(n) → resolves to value
+ */
+function chainable(finalValue: unknown): any {
+  return new Proxy(() => {}, {
+    get(_, prop) {
+      if (prop === 'then') {
+        return (resolve: any, reject?: any) =>
+          Promise.resolve(finalValue).then(resolve, reject);
+      }
+      if (prop === 'catch' || prop === 'finally') {
+        return (...args: any[]) =>
+          (Promise.resolve(finalValue) as any)[prop](...args);
+      }
+      // Any property access returns a function that returns another chainable
+      return (..._args: any[]) => chainable(finalValue);
+    },
+    apply() {
+      return chainable(finalValue);
+    },
+  });
+}
+
+export function createMockDb(overrides: { execute?: any; select?: any } = {}) {
+  return {
+    execute: vi.fn().mockResolvedValue(overrides.execute ?? [{ '1': 1 }]),
+    select: vi.fn((..._args: any[]) => chainable(overrides.select ?? [])),
+    insert: vi.fn((..._args: any[]) => chainable([])),
+    update: vi.fn((..._args: any[]) => chainable([])),
+    delete: vi.fn((..._args: any[]) => chainable([])),
+  };
+}
+
+// ─── Reset Helpers ───────────────────────────────────────────
+
+export function resetMockRepos(repos: MockRepos) {
+  for (const repo of Object.values(repos)) {
+    for (const fn of Object.values(repo)) {
+      if (typeof (fn as any).mockClear === 'function') (fn as any).mockClear();
+    }
+  }
+}
