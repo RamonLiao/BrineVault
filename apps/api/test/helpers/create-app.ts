@@ -13,6 +13,12 @@ import { JwtService } from '../../src/modules/auth/jwt.service.js';
 import { SessionService } from '../../src/modules/auth/session.service.js';
 import { OrgsController } from '../../src/modules/orgs/orgs.controller.js';
 import { OrgsService } from '../../src/modules/orgs/orgs.service.js';
+import { PoolsController } from '../../src/modules/pools/pools.controller.js';
+import { PoolsService } from '../../src/modules/pools/pools.service.js';
+import { DataroomsController } from '../../src/modules/datarooms/datarooms.controller.js';
+import { DataroomsService } from '../../src/modules/datarooms/datarooms.service.js';
+import { DocumentsController } from '../../src/modules/documents/documents.controller.js';
+import { DocumentsService } from '../../src/modules/documents/documents.service.js';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter.js';
 import { LoggingInterceptor } from '../../src/common/interceptors/logging.interceptor.js';
 import { AuthGuard } from '../../src/common/guards/auth.guard.js';
@@ -62,6 +68,9 @@ export async function createTestApp(overrides?: {
       HealthController,
       AuthController,
       OrgsController,
+      PoolsController,
+      DataroomsController,
+      DocumentsController,
       ...(overrides?.extraControllers ?? []),
     ],
     providers: [
@@ -70,6 +79,9 @@ export async function createTestApp(overrides?: {
       JwtService,
       SessionService,
       OrgsService,
+      PoolsService,
+      DataroomsService,
+      DocumentsService,
       // Mock infrastructure
       { provide: DATABASE, useValue: db },
       { provide: REDIS, useValue: redis },
