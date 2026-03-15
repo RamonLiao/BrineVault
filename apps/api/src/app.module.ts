@@ -10,6 +10,7 @@ import { OrgsModule } from './modules/orgs/orgs.module.js';
 import { SuiModule } from './infra/sui/sui.module.js';
 import { PoolsModule } from './modules/pools/pools.module.js';
 import { DataroomsModule } from './modules/datarooms/datarooms.module.js';
+import { DocumentsModule } from './modules/documents/documents.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 import { AuthGuard } from './common/guards/auth.guard.js';
@@ -28,6 +29,7 @@ const env = loadEnv();
     SuiModule,
     PoolsModule,
     DataroomsModule,
+    DocumentsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
