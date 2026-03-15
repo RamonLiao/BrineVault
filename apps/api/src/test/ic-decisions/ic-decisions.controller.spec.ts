@@ -55,11 +55,14 @@ describe('ICDecisionsController', () => {
     relatedDocIds: [],
   };
 
+  let mockDecisionInstance: ReturnType<typeof mockDecision>;
+
   beforeEach(() => {
+    mockDecisionInstance = mockDecision();
     icDecisionsService = {
       buildSubmitDecision: vi.fn().mockResolvedValue(mockTxResponse),
-      listDecisions: vi.fn().mockResolvedValue([mockDecision()]),
-      getDecision: vi.fn().mockResolvedValue(mockDecision()),
+      listDecisions: vi.fn().mockResolvedValue([mockDecisionInstance]),
+      getDecision: vi.fn().mockResolvedValue(mockDecisionInstance),
     };
 
     controller = new ICDecisionsController(
@@ -113,7 +116,7 @@ describe('ICDecisionsController', () => {
       const result = await controller.list(poolId, mockUser as any);
 
       expect(icDecisionsService.listDecisions).toHaveBeenCalledWith(poolId, mockUser.orgId);
-      expect(result).toEqual([mockDecision()]);
+      expect(result).toEqual([mockDecisionInstance]);
     });
 
     it('passes user.orgId (which may be null)', async () => {
@@ -140,7 +143,7 @@ describe('ICDecisionsController', () => {
       const result = await controller.findOne(poolId, 0, mockUser as any);
 
       expect(icDecisionsService.getDecision).toHaveBeenCalledWith(poolId, 0, mockUser.orgId);
-      expect(result).toEqual(mockDecision());
+      expect(result).toEqual(mockDecisionInstance);
     });
 
     it('calls getDecision with correct index', async () => {

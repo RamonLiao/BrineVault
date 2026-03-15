@@ -19,6 +19,14 @@ import { DataroomsController } from '../../src/modules/datarooms/datarooms.contr
 import { DataroomsService } from '../../src/modules/datarooms/datarooms.service.js';
 import { DocumentsController } from '../../src/modules/documents/documents.controller.js';
 import { DocumentsService } from '../../src/modules/documents/documents.service.js';
+import { ReviewsController } from '../../src/modules/reviews/reviews.controller.js';
+import { ReviewsService } from '../../src/modules/reviews/reviews.service.js';
+import { ICDecisionsController } from '../../src/modules/ic-decisions/ic-decisions.controller.js';
+import { ICDecisionsService } from '../../src/modules/ic-decisions/ic-decisions.service.js';
+import { ChecklistController } from '../../src/modules/checklist/checklist.controller.js';
+import { ChecklistService } from '../../src/modules/checklist/checklist.service.js';
+import { AuditController } from '../../src/modules/audit/audit.controller.js';
+import { AuditService } from '../../src/modules/audit/audit.service.js';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter.js';
 import { LoggingInterceptor } from '../../src/common/interceptors/logging.interceptor.js';
 import { AuthGuard } from '../../src/common/guards/auth.guard.js';
@@ -75,6 +83,10 @@ export async function createTestApp(overrides?: {
       PoolsController,
       DataroomsController,
       DocumentsController,
+      ReviewsController,
+      ICDecisionsController,
+      ChecklistController,
+      AuditController,
       ...(overrides?.extraControllers ?? []),
     ],
     providers: [
@@ -86,6 +98,10 @@ export async function createTestApp(overrides?: {
       PoolsService,
       DataroomsService,
       DocumentsService,
+      ReviewsService,
+      ICDecisionsService,
+      ChecklistService,
+      AuditService,
       // Mock infrastructure
       { provide: DATABASE, useValue: db },
       { provide: REDIS, useValue: redis },
