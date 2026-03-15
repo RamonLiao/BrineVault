@@ -8,6 +8,10 @@ import {
   DataroomsRepository,
   DocumentsRepository,
   DocumentVersionsRepository,
+  DocumentReviewsRepository,
+  ICDecisionsRepository,
+  ChecklistRepository,
+  AuditEventsRepository,
 } from '@rwa-dataroom/db';
 import type { Database } from '@rwa-dataroom/db';
 import { DATABASE } from '../../common/constants.js';
@@ -21,6 +25,10 @@ const repositories = [
   DataroomsRepository,
   DocumentsRepository,
   DocumentVersionsRepository,
+  DocumentReviewsRepository,
+  ICDecisionsRepository,
+  ChecklistRepository,
+  AuditEventsRepository,
 ];
 
 @Global()

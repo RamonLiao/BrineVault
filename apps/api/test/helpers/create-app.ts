@@ -33,6 +33,10 @@ import {
   DataroomsRepository,
   DocumentsRepository,
   DocumentVersionsRepository,
+  DocumentReviewsRepository,
+  ICDecisionsRepository,
+  ChecklistRepository,
+  AuditEventsRepository,
 } from '@rwa-dataroom/db';
 
 import {
@@ -94,6 +98,10 @@ export async function createTestApp(overrides?: {
       { provide: DataroomsRepository, useValue: repos.dataroomsRepo },
       { provide: DocumentsRepository, useValue: repos.documentsRepo },
       { provide: DocumentVersionsRepository, useValue: repos.documentVersionsRepo },
+      { provide: DocumentReviewsRepository, useValue: repos.documentReviewsRepo },
+      { provide: ICDecisionsRepository, useValue: repos.icDecisionsRepo },
+      { provide: ChecklistRepository, useValue: repos.checklistRepo },
+      { provide: AuditEventsRepository, useValue: repos.auditEventsRepo },
       { provide: SUI_TX_SERVICE, useValue: suiTxService },
       // Global middleware
       { provide: APP_FILTER, useClass: GlobalExceptionFilter },

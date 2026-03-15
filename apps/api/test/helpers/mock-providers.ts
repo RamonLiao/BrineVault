@@ -11,6 +11,10 @@ export interface MockRepos {
   dataroomsRepo: Record<string, ReturnType<typeof vi.fn>>;
   documentsRepo: Record<string, ReturnType<typeof vi.fn>>;
   documentVersionsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  documentReviewsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  icDecisionsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  checklistRepo: Record<string, ReturnType<typeof vi.fn>>;
+  auditEventsRepo: Record<string, ReturnType<typeof vi.fn>>;
 }
 
 export function createMockRepos(): MockRepos {
@@ -57,6 +61,30 @@ export function createMockRepos(): MockRepos {
     documentVersionsRepo: {
       findByDocumentId: vi.fn(),
       findByDocumentAndVersion: vi.fn(),
+    },
+    documentReviewsRepo: {
+      findByDocumentId: vi.fn(),
+      findByDocumentAndReviewer: vi.fn(),
+      upsertFromEvent: vi.fn(),
+    },
+    icDecisionsRepo: {
+      findByPoolId: vi.fn(),
+      findByPoolAndIndex: vi.fn(),
+      insertFromEvent: vi.fn(),
+    },
+    checklistRepo: {
+      findAllTemplates: vi.fn(),
+      createTemplate: vi.fn(),
+      findItemsByPoolId: vi.fn(),
+      createItem: vi.fn(),
+      updateItem: vi.fn(),
+      deleteItem: vi.fn(),
+    },
+    auditEventsRepo: {
+      findByPoolId: vi.fn(),
+      findByActorAddress: vi.fn(),
+      existsByTxSeq: vi.fn(),
+      insertFromEvent: vi.fn(),
     },
   };
 }
@@ -111,6 +139,10 @@ export function createMockSuiTxService() {
     buildCreateDocumentTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
     buildAddVersionTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
     buildArchiveDocumentTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildSubmitReviewTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildRecordIcApprovalTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildRecordIcRejectionTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
+    buildRecordIcRequestChangesTx: vi.fn().mockResolvedValue({ txBytes: 'mock-tx-bytes' }),
     submitSignedTx: vi.fn().mockResolvedValue({
       digest: '0xmockdigest',
       effects: { status: { status: 'success' } },
