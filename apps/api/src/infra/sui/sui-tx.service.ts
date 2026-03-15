@@ -105,6 +105,28 @@ export interface BuildArchiveDocumentParams {
   docObjectId: string;
 }
 
+// Review TX params
+export interface BuildSubmitReviewParams {
+  senderAddress: string;
+  adminConfigId: string;
+  poolObjectId: string;
+  docObjectId: string;
+  status: number;
+  commentHash?: string; // 64-char hex, optional
+}
+
+// IC Decision TX params (shared shape for all 3 variants)
+export interface BuildRecordIcDecisionParams {
+  senderAddress: string;
+  adminConfigId: string;
+  poolObjectId: string;
+  decisionText: string;
+  pdfBlobId: string;
+  committeeMembers: string[];
+  votes: number[];
+  relatedDocIds: string[];
+}
+
 export interface SubmitSignedTxParams {
   txBytes: string;
   signature: string;
@@ -328,6 +350,71 @@ export class SuiTxService {
 
     const txBytes = await tx.build({ client: this.client });
     return { txBytes: Buffer.from(txBytes).toString('base64') };
+  }
+
+  // ─── Review TXs ──────────────────────────────────────────────
+
+  async buildSubmitReviewTx(params: BuildSubmitReviewParams) {
+    const tx = new Transaction();
+    tx.setSender(params.senderAddress);
+
+    const commentHashArg = params.commentHash
+      ? tx.pure.option('vector<u8>', this.hexToBytes(params.commentHash))
+      : tx.pure.option('vector<u8>', null);
+
+    tx.moveCall({
+      target: `${this.packageId}::document_entry::submit_review`,
+      arguments: [
+        tx.object(params.adminConfigId),
+        tx.object(params.poolObjectId),
+        tx.pure.id(params.docObjectId),
+        tx.pure.u8(params.status),
+        commentHashArg,
+        tx.object('0x6'), // Clock
+      ],
+    });
+
+    const txBytes = await tx.build({ client: this.client });
+    return { txBytes: Buffer.from(txBytes).toString('base64') };
+  }
+
+  // ─── IC Decision TXs ────────────────────────────────────────
+
+  private async buildIcDecisionTx(
+    targetFunction: string,
+    params: BuildRecordIcDecisionParams,
+  ) {
+    const tx = new Transaction();
+    tx.setSender(params.senderAddress);
+
+    tx.moveCall({
+      target: `${this.packageId}::pool_entry::${targetFunction}`,
+      arguments: [
+        tx.object(params.adminConfigId),
+        tx.object(params.poolObjectId),
+        tx.pure.string(params.decisionText),
+        tx.pure.string(params.pdfBlobId),
+        tx.pure.vector('address', params.committeeMembers),
+        tx.pure.vector('u8', params.votes),
+        tx.pure.vector('address', params.relatedDocIds),
+        tx.object('0x6'), // Clock
+      ],
+    });
+
+    const txBytes = await tx.build({ client: this.client });
+    return { txBytes: Buffer.from(txBytes).toString('base64') };
+  }
+
+  async buildRecordIcApprovalTx(params: BuildRecordIcDecisionParams) {
+    return this.buildIcDecisionTx('record_ic_approval', params);
+  }
+
+  async buildRecordIcRejectionTx(params: BuildRecordIcDecisionParams) {
+    return this.buildIcDecisionTx('record_ic_rejection', params);
+  }
+
+  async buildRecordIcRequestChangesTx(params: BuildRecordIcDecisionParams) {
+    return this.buildIcDecisionTx('record_ic_request_changes', params);
   }
 
   // ─── Submit signed TX ─────────────────────────────────────────
