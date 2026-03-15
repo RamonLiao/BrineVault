@@ -54,6 +54,7 @@ export class ReviewsService {
 
     const doc = await this.documentsRepo.findById(docId);
     if (!doc) throw new NotFoundException({ code: 'DOCUMENT_NOT_FOUND', message: 'Document not found' });
+    if (doc.poolId !== poolId) throw new NotFoundException({ code: 'DOCUMENT_NOT_FOUND', message: 'Document not found' });
 
     return this.reviewsRepo.findByDocumentId(docId);
   }
@@ -65,6 +66,7 @@ export class ReviewsService {
 
     const doc = await this.documentsRepo.findById(docId);
     if (!doc) throw new NotFoundException({ code: 'DOCUMENT_NOT_FOUND', message: 'Document not found' });
+    if (doc.poolId !== poolId) throw new NotFoundException({ code: 'DOCUMENT_NOT_FOUND', message: 'Document not found' });
 
     const reviews = await this.reviewsRepo.findByDocumentId(docId);
     const total = reviews.length;

@@ -3,6 +3,7 @@ import {
   Inject,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PoolsRepository, ICDecisionsRepository } from '@rwa-dataroom/db';
 import { IC_DECISION_TYPES } from '@rwa-dataroom/shared';
@@ -53,7 +54,7 @@ export class ICDecisionsService {
       case IC_DECISION_TYPES.REQUEST_CHANGES:
         return this.suiTx.buildRecordIcRequestChangesTx(txParams);
       default:
-        throw new Error(`Unknown decision type: ${dto.decisionType}`);
+        throw new BadRequestException({ code: 'INVALID_DECISION_TYPE', message: `Unknown decision type: ${dto.decisionType}` });
     }
   }
 

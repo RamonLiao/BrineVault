@@ -143,6 +143,7 @@ describe('ChecklistService', () => {
     it('returns updated item', async () => {
       const updated = mockItem({ isRequired: true });
       poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([mockItem()]);
       checklistRepo.updateItem.mockResolvedValue([updated]);
 
       const result = await service.updateItem(poolId, itemId, orgId, dto);
@@ -153,7 +154,20 @@ describe('ChecklistService', () => {
 
     it('throws NotFoundException when item not found (empty rows)', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([mockItem()]);
       checklistRepo.updateItem.mockResolvedValue([]);
+
+      await expect(service.updateItem(poolId, itemId, orgId, dto)).rejects.toThrow(NotFoundException);
+      try {
+        await service.updateItem(poolId, itemId, orgId, dto);
+      } catch (err: any) {
+        expect(err.getResponse()).toMatchObject({ code: 'CHECKLIST_ITEM_NOT_FOUND' });
+      }
+    });
+
+    it('throws NotFoundException when item does not belong to this pool', async () => {
+      poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([]); // item not in pool
 
       await expect(service.updateItem(poolId, itemId, orgId, dto)).rejects.toThrow(NotFoundException);
       try {
@@ -179,12 +193,25 @@ describe('ChecklistService', () => {
   describe('deleteItem', () => {
     it('delegates to repo and returns result', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([mockItem()]);
       checklistRepo.deleteItem.mockResolvedValue({ rowCount: 1 });
 
       const result = await service.deleteItem(poolId, itemId, orgId);
 
       expect(checklistRepo.deleteItem).toHaveBeenCalledWith(itemId);
       expect(result).toEqual({ rowCount: 1 });
+    });
+
+    it('throws NotFoundException when item does not belong to this pool', async () => {
+      poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([]); // item not in pool
+
+      await expect(service.deleteItem(poolId, itemId, orgId)).rejects.toThrow(NotFoundException);
+      try {
+        await service.deleteItem(poolId, itemId, orgId);
+      } catch (err: any) {
+        expect(err.getResponse()).toMatchObject({ code: 'CHECKLIST_ITEM_NOT_FOUND' });
+      }
     });
 
     it('throws NotFoundException when pool not found', async () => {
@@ -233,6 +260,7 @@ describe('ChecklistService', () => {
     it('updateItem — updates linkedDocumentId to null', async () => {
       const updated = mockItem({ linkedDocumentId: null });
       poolsRepo.findById.mockResolvedValue(mockPool());
+      checklistRepo.findItemsByPoolId.mockResolvedValue([mockItem()]);
       checklistRepo.updateItem.mockResolvedValue([updated]);
 
       const result = await service.updateItem(poolId, itemId, orgId, { linkedDocumentId: null });
@@ -244,6 +272,7 @@ describe('ChecklistService', () => {
       for (const status of statuses) {
         const updated = mockItem({ status });
         poolsRepo.findById.mockResolvedValue(mockPool());
+        checklistRepo.findItemsByPoolId.mockResolvedValue([mockItem()]);
         checklistRepo.updateItem.mockResolvedValue([updated]);
 
         const result = await service.updateItem(poolId, itemId, orgId, { status });
@@ -266,12 +295,11 @@ describe('ChecklistService', () => {
       await expect(service.listTemplates()).rejects.toThrow('DB error');
     });
 
-    it('deleteItem does not throw when item not found (repo returns empty)', async () => {
+    it('deleteItem throws NotFoundException when item not in pool', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
-      checklistRepo.deleteItem.mockResolvedValue({ rowCount: 0 });
+      checklistRepo.findItemsByPoolId.mockResolvedValue([]); // item not found in pool
 
-      // deleteItem does not check existence — no throw expected
-      await expect(service.deleteItem(poolId, itemId, orgId)).resolves.toEqual({ rowCount: 0 });
+      await expect(service.deleteItem(poolId, itemId, orgId)).rejects.toThrow(NotFoundException);
     });
   });
 });

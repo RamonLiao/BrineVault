@@ -156,6 +156,18 @@ describe('ReviewsService', () => {
       await expect(service.listReviews(poolId, docId, orgId))
         .rejects.toThrow(NotFoundException);
     });
+
+    it('throws NotFoundException when doc belongs to a different pool', async () => {
+      poolsRepo.findById.mockResolvedValue(mockPool());
+      documentsRepo.findById.mockResolvedValue(mockDoc({ poolId: 'other-pool' }));
+      await expect(service.listReviews(poolId, docId, orgId))
+        .rejects.toThrow(NotFoundException);
+      try {
+        await service.listReviews(poolId, docId, orgId);
+      } catch (err: any) {
+        expect(err.getResponse()).toMatchObject({ code: 'DOCUMENT_NOT_FOUND' });
+      }
+    });
   });
 
   describe('getReviewSummary', () => {
@@ -196,6 +208,18 @@ describe('ReviewsService', () => {
       documentsRepo.findById.mockResolvedValue(null);
       await expect(service.getReviewSummary(poolId, docId, orgId))
         .rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when doc belongs to a different pool', async () => {
+      poolsRepo.findById.mockResolvedValue(mockPool());
+      documentsRepo.findById.mockResolvedValue(mockDoc({ poolId: 'other-pool' }));
+      await expect(service.getReviewSummary(poolId, docId, orgId))
+        .rejects.toThrow(NotFoundException);
+      try {
+        await service.getReviewSummary(poolId, docId, orgId);
+      } catch (err: any) {
+        expect(err.getResponse()).toMatchObject({ code: 'DOCUMENT_NOT_FOUND' });
+      }
     });
 
     it('handles large number of reviews correctly', async () => {

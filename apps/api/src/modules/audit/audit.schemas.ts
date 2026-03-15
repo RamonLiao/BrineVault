@@ -5,7 +5,6 @@ export const auditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   eventType: z.string().optional(),
   actorAddress: z.string().optional(),
-  format: z.enum(['json', 'csv']).default('json'),
 });
 
 export type AuditQueryDto = z.infer<typeof auditQuerySchema>;

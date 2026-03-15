@@ -33,6 +33,10 @@ export class ChecklistService {
 
   async updateItem(poolId: string, itemId: string, userOrgId: string | null, dto: UpdateChecklistItemDto) {
     await this.assertPoolAccess(poolId, userOrgId);
+    const items = await this.checklistRepo.findItemsByPoolId(poolId);
+    if (!items.find((i) => i.id === itemId)) {
+      throw new NotFoundException({ code: 'CHECKLIST_ITEM_NOT_FOUND', message: 'Checklist item not found' });
+    }
     const rows = await this.checklistRepo.updateItem(itemId, dto);
     if (!rows.length) throw new NotFoundException({ code: 'CHECKLIST_ITEM_NOT_FOUND', message: 'Checklist item not found' });
     return rows[0];
@@ -40,6 +44,10 @@ export class ChecklistService {
 
   async deleteItem(poolId: string, itemId: string, userOrgId: string | null) {
     await this.assertPoolAccess(poolId, userOrgId);
+    const items = await this.checklistRepo.findItemsByPoolId(poolId);
+    if (!items.find((i) => i.id === itemId)) {
+      throw new NotFoundException({ code: 'CHECKLIST_ITEM_NOT_FOUND', message: 'Checklist item not found' });
+    }
     return this.checklistRepo.deleteItem(itemId);
   }
 

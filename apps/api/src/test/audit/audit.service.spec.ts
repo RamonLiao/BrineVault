@@ -56,7 +56,7 @@ describe('AuditService', () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
       auditRepo.findByPoolId.mockResolvedValue(events);
 
-      const result = await service.getPoolAudit(poolId, orgId, { page: 1, limit: 10, format: 'json' });
+      const result = await service.getPoolAudit(poolId, orgId, { page: 1, limit: 10 });
 
       expect(result.data).toEqual(events);
       expect(result.page).toBe(1);
@@ -68,7 +68,7 @@ describe('AuditService', () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
       auditRepo.findByPoolId.mockResolvedValue([]);
 
-      await service.getPoolAudit(poolId, orgId, { page: 3, limit: 20, format: 'json' });
+      await service.getPoolAudit(poolId, orgId, { page: 3, limit: 20 });
 
       expect(auditRepo.findByPoolId).toHaveBeenCalledWith(poolId, { limit: 20, offset: 40 });
     });
@@ -76,11 +76,11 @@ describe('AuditService', () => {
     it('throws NOT_FOUND if pool does not exist', async () => {
       poolsRepo.findById.mockResolvedValue(null);
 
-      await expect(service.getPoolAudit(poolId, orgId, { page: 1, limit: 10, format: 'json' })).rejects.toThrow(
+      await expect(service.getPoolAudit(poolId, orgId, { page: 1, limit: 10 })).rejects.toThrow(
         NotFoundException,
       );
       try {
-        await service.getPoolAudit(poolId, orgId, { page: 1, limit: 10, format: 'json' });
+        await service.getPoolAudit(poolId, orgId, { page: 1, limit: 10 });
       } catch (err: any) {
         expect(err.getResponse()).toMatchObject({ code: 'POOL_NOT_FOUND' });
       }
@@ -89,11 +89,11 @@ describe('AuditService', () => {
     it('throws FORBIDDEN if wrong org', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
 
-      await expect(service.getPoolAudit(poolId, 'other-org', { page: 1, limit: 10, format: 'json' })).rejects.toThrow(
+      await expect(service.getPoolAudit(poolId, 'other-org', { page: 1, limit: 10 })).rejects.toThrow(
         ForbiddenException,
       );
       try {
-        await service.getPoolAudit(poolId, 'other-org', { page: 1, limit: 10, format: 'json' });
+        await service.getPoolAudit(poolId, 'other-org', { page: 1, limit: 10 });
       } catch (err: any) {
         expect(err.getResponse()).toMatchObject({ code: 'NOT_IN_ORG' });
       }
@@ -102,7 +102,7 @@ describe('AuditService', () => {
     it('throws FORBIDDEN if userOrgId is null', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
 
-      await expect(service.getPoolAudit(poolId, null, { page: 1, limit: 10, format: 'json' })).rejects.toThrow(
+      await expect(service.getPoolAudit(poolId, null, { page: 1, limit: 10 })).rejects.toThrow(
         ForbiddenException,
       );
     });
@@ -211,7 +211,7 @@ describe('AuditService', () => {
       poolsRepo.findById.mockResolvedValue(mockPool());
       auditRepo.findByPoolId.mockResolvedValue([]);
 
-      await service.getPoolAudit(poolId, orgId, { page: 1000, limit: 50, format: 'json' });
+      await service.getPoolAudit(poolId, orgId, { page: 1000, limit: 50 });
 
       expect(auditRepo.findByPoolId).toHaveBeenCalledWith(poolId, { limit: 50, offset: 49950 });
     });
@@ -244,7 +244,7 @@ describe('AuditService', () => {
     it('getPoolAudit — pool orgId null never matches user orgId', async () => {
       poolsRepo.findById.mockResolvedValue(mockPool({ orgId: null }));
 
-      await expect(service.getPoolAudit(poolId, orgId, { page: 1, limit: 10, format: 'json' })).rejects.toThrow(
+      await expect(service.getPoolAudit(poolId, orgId, { page: 1, limit: 10 })).rejects.toThrow(
         ForbiddenException,
       );
     });

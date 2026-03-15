@@ -8,7 +8,7 @@ process.env.SUI_PACKAGE_ID = '0x0';
 process.env.PLATFORM_KEYPAIR = 'dGVzdA==';
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ICDecisionsService } from '../../modules/ic-decisions/ic-decisions.service.js';
 
 describe('ICDecisionsService', () => {
@@ -169,6 +169,20 @@ describe('ICDecisionsService', () => {
       await expect(
         service.buildSubmitDecision(poolId, userAddress, null, validDto as any),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException with INVALID_DECISION_TYPE for unknown decisionType', async () => {
+      poolsRepo.findById.mockResolvedValue(mockPool());
+      const dto = { ...validDto, decisionType: 99 };
+
+      await expect(
+        service.buildSubmitDecision(poolId, userAddress, orgId, dto as any),
+      ).rejects.toThrow(BadRequestException);
+      try {
+        await service.buildSubmitDecision(poolId, userAddress, orgId, dto as any);
+      } catch (err: any) {
+        expect(err.getResponse()).toMatchObject({ code: 'INVALID_DECISION_TYPE' });
+      }
     });
   });
 
