@@ -18,6 +18,7 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/schedule": "^6.1.1",
     "@rwa-dataroom/db": "workspace:*",
     "@rwa-dataroom/shared": "workspace:*",
     "cookie-parser": "^1.4.7",
