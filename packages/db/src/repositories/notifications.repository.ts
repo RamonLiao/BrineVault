@@ -26,6 +26,13 @@ export class NotificationsRepository extends BaseRepository {
       .where(eq(notifications.id, id));
   }
 
+  async markAsReadForUser(id: string, userId: string) {
+    return this.db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
   async markAllAsRead(userId: string) {
     return this.db
       .update(notifications)
