@@ -12,6 +12,9 @@ import {
   ICDecisionsRepository,
   ChecklistRepository,
   AuditEventsRepository,
+  NotificationsRepository,
+  NotificationPreferencesRepository,
+  SubscriptionsRepository,
 } from '@rwa-dataroom/db';
 import type { Database } from '@rwa-dataroom/db';
 import { DATABASE } from '../../common/constants.js';
@@ -29,6 +32,9 @@ const repositories = [
   ICDecisionsRepository,
   ChecklistRepository,
   AuditEventsRepository,
+  NotificationsRepository,
+  NotificationPreferencesRepository,
+  SubscriptionsRepository,
 ];
 
 @Global()
