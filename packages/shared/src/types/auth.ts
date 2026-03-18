@@ -1,8 +1,10 @@
 export interface JwtPayload {
-  sub: string; // Sui address
-  orgId: string;
-  role: number; // global org role, not pool-specific
-  sessionId: string;
+  sub: string;          // userId (uuid)
+  address: string;      // Sui wallet address
+  orgId: string | null; // nullable for new users
+  orgRole: number;      // roleInOrg bitmask
+  sid: string;          // session ID
+  jti: string;          // unique token ID (for blacklisting)
   iat: number;
   exp: number;
 }
@@ -17,6 +19,7 @@ export interface Session {
   lastActivityAt: number;
   userAgent: string;
   ip: string;
+  refreshTokenHash: string;
 }
 
 export interface AuthChallenge {

@@ -15,6 +15,7 @@ export { OrganizationsRepository } from "./organizations.repository.js";
 export { UsersRepository } from "./users.repository.js";
 export { CommentsRepository } from "./comments.repository.js";
 export { NotificationsRepository } from "./notifications.repository.js";
+export { NotificationPreferencesRepository } from "./notification-preferences.repository.js";
 export { ChecklistRepository } from "./checklist.repository.js";
 export { SubscriptionsRepository } from "./subscriptions.repository.js";
 export { InviteCodesRepository } from "./invite-codes.repository.js";
