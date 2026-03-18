@@ -15,6 +15,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { ICDecisionsModule } from './modules/ic-decisions/ic-decisions.module.js';
 import { ChecklistModule } from './modules/checklist/checklist.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 import { AuthGuard } from './common/guards/auth.guard.js';
@@ -38,6 +39,7 @@ const env = loadEnv();
     ICDecisionsModule,
     ChecklistModule,
     AuditModule,
+    NotificationsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
