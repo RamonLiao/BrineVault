@@ -15,6 +15,9 @@ export interface MockRepos {
   icDecisionsRepo: Record<string, ReturnType<typeof vi.fn>>;
   checklistRepo: Record<string, ReturnType<typeof vi.fn>>;
   auditEventsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  notificationsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  notificationPrefsRepo: Record<string, ReturnType<typeof vi.fn>>;
+  subscriptionsRepo: Record<string, ReturnType<typeof vi.fn>>;
 }
 
 export function createMockRepos(): MockRepos {
@@ -85,6 +88,28 @@ export function createMockRepos(): MockRepos {
       findByActorAddress: vi.fn(),
       existsByTxSeq: vi.fn(),
       insertFromEvent: vi.fn(),
+    },
+    notificationsRepo: {
+      findByUserId: vi.fn(),
+      create: vi.fn(),
+      markAsRead: vi.fn(),
+      markAsReadForUser: vi.fn(),
+      markAllAsRead: vi.fn(),
+    },
+    notificationPrefsRepo: {
+      findByUserId: vi.fn(),
+      upsert: vi.fn(),
+    },
+    subscriptionsRepo: {
+      findByOrgId: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      findInvoicesByOrgId: vi.fn(),
+      findInvoiceById: vi.fn(),
+      createInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+      findExpiring: vi.fn(),
+      findGracePeriodExpired: vi.fn(),
     },
   };
 }

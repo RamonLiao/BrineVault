@@ -27,6 +27,11 @@ import { ChecklistController } from '../../src/modules/checklist/checklist.contr
 import { ChecklistService } from '../../src/modules/checklist/checklist.service.js';
 import { AuditController } from '../../src/modules/audit/audit.controller.js';
 import { AuditService } from '../../src/modules/audit/audit.service.js';
+import { NotificationsController } from '../../src/modules/notifications/notifications.controller.js';
+import { NotificationsService } from '../../src/modules/notifications/notifications.service.js';
+import { BillingController } from '../../src/modules/billing/billing.controller.js';
+import { BillingService } from '../../src/modules/billing/billing.service.js';
+import { NotificationDispatcherService } from '../../src/workers/notification-dispatcher.service.js';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter.js';
 import { LoggingInterceptor } from '../../src/common/interceptors/logging.interceptor.js';
 import { AuthGuard } from '../../src/common/guards/auth.guard.js';
@@ -45,6 +50,9 @@ import {
   ICDecisionsRepository,
   ChecklistRepository,
   AuditEventsRepository,
+  NotificationsRepository,
+  NotificationPreferencesRepository,
+  SubscriptionsRepository,
 } from '@rwa-dataroom/db';
 
 import {
@@ -87,6 +95,8 @@ export async function createTestApp(overrides?: {
       ICDecisionsController,
       ChecklistController,
       AuditController,
+      NotificationsController,
+      BillingController,
       ...(overrides?.extraControllers ?? []),
     ],
     providers: [
@@ -102,6 +112,9 @@ export async function createTestApp(overrides?: {
       ICDecisionsService,
       ChecklistService,
       AuditService,
+      NotificationsService,
+      BillingService,
+      NotificationDispatcherService,
       // Mock infrastructure
       { provide: DATABASE, useValue: db },
       { provide: REDIS, useValue: redis },
@@ -118,6 +131,9 @@ export async function createTestApp(overrides?: {
       { provide: ICDecisionsRepository, useValue: repos.icDecisionsRepo },
       { provide: ChecklistRepository, useValue: repos.checklistRepo },
       { provide: AuditEventsRepository, useValue: repos.auditEventsRepo },
+      { provide: NotificationsRepository, useValue: repos.notificationsRepo },
+      { provide: NotificationPreferencesRepository, useValue: repos.notificationPrefsRepo },
+      { provide: SubscriptionsRepository, useValue: repos.subscriptionsRepo },
       { provide: SUI_TX_SERVICE, useValue: suiTxService },
       // Global middleware
       { provide: APP_FILTER, useClass: GlobalExceptionFilter },
