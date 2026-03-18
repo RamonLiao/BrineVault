@@ -50,9 +50,11 @@ docker-compose.override.yml
 infra/monitoring/grafana/data/
 infra/monitoring/prometheus/data/
 
+# Claude Code (personal workspace)
+.claude/
+
 # Worktrees
 .worktrees/
-.claude/worktrees/
 
 # Test coverage
 coverage/
