@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import { subscriptions } from "../schema/subscriptions.js";
 import { invoices } from "../schema/invoices.js";
 import { BaseRepository } from "./base.js";
@@ -31,8 +31,40 @@ export class SubscriptionsRepository extends BaseRepository {
 
   // --- Invoices ---
 
-  async findInvoicesByOrgId(orgId: string) {
-    return this.db.select().from(invoices).where(eq(invoices.orgId, orgId));
+  async findInvoiceById(id: string) {
+    const rows = await this.db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+    return rows[0] ?? null;
+  }
+
+  async findInvoicesByOrgId(orgId: string, opts?: { limit?: number; offset?: number }) {
+    const q = this.db.select().from(invoices).where(eq(invoices.orgId, orgId));
+    if (opts?.limit !== undefined) q.limit(opts.limit);
+    if (opts?.offset !== undefined) q.offset(opts.offset);
+    return q;
+  }
+
+  async findExpiring(beforeDate: Date) {
+    return this.db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          inArray(subscriptions.status, ["active", "trial"]),
+          lte(subscriptions.currentPeriodEnd, beforeDate),
+        ),
+      );
+  }
+
+  async findGracePeriodExpired(beforeDate: Date) {
+    return this.db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.status, "grace_period"),
+          lte(subscriptions.gracePeriodEnd, beforeDate),
+        ),
+      );
   }
 
   async createInvoice(data: typeof invoices.$inferInsert) {
