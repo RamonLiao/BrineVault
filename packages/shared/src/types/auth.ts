@@ -42,3 +42,36 @@ export interface AuthVerifyResponse {
     orgId: string | null;
   };
 }
+
+export interface ZkLoginProof {
+  proofPoints: {
+    a: string[];
+    b: string[][];
+    c: string[];
+  };
+  issBase64Details: {
+    value: string;
+    indexMod4: number;
+  };
+  headerBase64: string;
+}
+
+export interface VerifyZkLoginRequest {
+  jwt: string;
+  zkProof: ZkLoginProof;
+  ephemeralPubKey: string;
+  maxEpoch: number;
+  salt: string;
+}
+
+/** Unified response for both /auth/verify and /auth/verify-zklogin */
+export interface AuthLoginResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    address: string;
+    displayName: string | null;
+    orgId: string | null;
+    roleInOrg: number;
+  };
+}

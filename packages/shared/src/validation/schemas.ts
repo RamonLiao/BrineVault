@@ -31,6 +31,25 @@ export const authRefreshRequestSchema = z.object({
   // Refresh token is sent via httpOnly cookie, body is empty or optional
 });
 
+export const verifyZkLoginRequestSchema = z.object({
+  jwt: z.string().min(1),
+  zkProof: z.object({
+    proofPoints: z.object({
+      a: z.array(z.string()),
+      b: z.array(z.array(z.string())),
+      c: z.array(z.string()),
+    }),
+    issBase64Details: z.object({
+      value: z.string(),
+      indexMod4: z.number(),
+    }),
+    headerBase64: z.string(),
+  }),
+  ephemeralPubKey: z.string().min(1),
+  maxEpoch: z.number().int().positive(),
+  salt: z.string().min(1),
+});
+
 // ========== Pool ==========
 
 export const createPoolRequestSchema = z.object({
