@@ -2,19 +2,26 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1';
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
+  _isRetry?: boolean;
 }
 
 export class ApiClient {
   private getToken: () => string | null;
   private onUnauthorised: () => void;
+  private onTokenRefreshed: (token: string) => void;
 
-  constructor(getToken: () => string | null, onUnauthorised: () => void) {
+  constructor(
+    getToken: () => string | null,
+    onUnauthorised: () => void,
+    onTokenRefreshed: (token: string) => void,
+  ) {
     this.getToken = getToken;
     this.onUnauthorised = onUnauthorised;
+    this.onTokenRefreshed = onTokenRefreshed;
   }
 
   async fetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { body, headers: extraHeaders, ...rest } = options;
+    const { body, headers: extraHeaders, _isRetry, ...rest } = options;
     const token = this.getToken();
 
     const headers: Record<string, string> = {
@@ -32,10 +39,16 @@ export class ApiClient {
           ...rest,
           headers,
           body: body ? JSON.stringify(body) : undefined,
+          credentials: 'include',
         });
 
         if (res.status === 401) {
-          // TODO: implement token refresh via POST /auth/refresh
+          if (!_isRetry) {
+            const refreshed = await this.attemptRefresh();
+            if (refreshed) {
+              return this.fetch<T>(path, { ...options, _isRetry: true });
+            }
+          }
           this.onUnauthorised();
           throw new ApiRequestError('Unauthorised', 'E_UNAUTHORISED', 401);
         }
@@ -63,6 +76,26 @@ export class ApiClient {
     }
 
     throw new Error('Unreachable');
+  }
+
+  private async attemptRefresh(): Promise<boolean> {
+    try {
+      const token = this.getToken();
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      this.onTokenRefreshed(data.access_token);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   get<T>(path: string) {

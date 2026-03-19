@@ -3,6 +3,7 @@ export const queryKeys = {
     all:    ['pools'] as const,
     list:   (orgId: string) => ['pools', 'list', orgId] as const,
     detail: (poolId: string) => ['pools', 'detail', poolId] as const,
+    stats:  (orgId: string) => ['pools', 'stats', orgId] as const,
   },
   documents: {
     list:   (poolId: string) => ['documents', 'list', poolId] as const,

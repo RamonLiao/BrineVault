@@ -49,6 +49,19 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+export interface ZkLoginProof {
+  proofPoints: {
+    a: string[];
+    b: string[][];
+    c: string[];
+  };
+  issBase64Details: {
+    value: string;
+    indexMod4: number;
+  };
+  headerBase64: string;
+}
+
 // --- Pool ---
 export interface Pool {
   id: string;
