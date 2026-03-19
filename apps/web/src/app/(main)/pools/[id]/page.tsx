@@ -1,37 +1,110 @@
-"use client";
+'use client';
 
-import { use } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle2, Circle, FileText, UploadCloud, Users, History, MoreVertical } from "lucide-react";
-import Link from "next/link";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { use, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  FileText,
+  Landmark,
+  MessageSquare,
+  ScrollText,
+  UploadCloud,
+  Users,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PoolStateBadge } from '@/components/pool/pool-state-badge';
+import { TabPlaceholder } from '@/components/pool/tab-placeholder';
+import { FolderTree } from '@/components/vdr/folder-tree';
+import { DocumentList } from '@/components/vdr/document-list';
+import { usePoolDetail } from '@/lib/api/hooks/use-pool-detail';
+import { useDocuments } from '@/lib/api/hooks/use-documents';
+import type { PoolTab } from '@/types';
+import { DEFAULT_FOLDERS } from '@rwa-dataroom/shared';
 
-export default function PoolDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const TABS: { key: PoolTab; label: string; icon: typeof FileText }[] = [
+  { key: 'vdr', label: 'VDR', icon: FileText },
+  { key: 'checklist', label: 'Checklist', icon: CheckCircle2 },
+  { key: 'reviews', label: 'Reviews', icon: MessageSquare },
+  { key: 'ic', label: 'IC', icon: Landmark },
+  { key: 'audit', label: 'Audit', icon: ScrollText },
+  { key: 'members', label: 'Members', icon: Users },
+];
+
+const VALID_TABS = new Set(TABS.map((t) => t.key));
+
+export default function PoolDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab') as PoolTab | null;
+  const activeTab: PoolTab =
+    tabParam && VALID_TABS.has(tabParam) ? tabParam : 'vdr';
+
+  const { data: pool, isLoading: poolLoading } = usePoolDetail(id);
+  const { data: docsData, isLoading: docsLoading } = useDocuments(id);
+
+  const [activeFolderId, setActiveFolderId] = useState<number | null>(null);
+
+  const filteredDocs = useMemo(() => {
+    const docs = docsData?.data ?? [];
+    if (activeFolderId === null) return docs;
+    return docs.filter((d) => d.folderId === activeFolderId);
+  }, [docsData, activeFolderId]);
+
+  function setActiveTab(tab: PoolTab) {
+    router.replace(`/pools/${id}?tab=${tab}`);
+  }
+
+  if (poolLoading) {
+    return (
+      <div className="max-w-6xl mx-auto py-6 space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  if (!pool) {
+    return (
+      <div className="max-w-6xl mx-auto py-6 text-center">
+        <h2 className="text-xl font-semibold">Pool not found</h2>
+        <Link href="/dashboard" className="text-primary underline mt-2 block">
+          Back to Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto py-6">
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">Apex Series A Secured Notes</h1>
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Active</Badge>
+            <h1 className="text-3xl font-bold tracking-tight">{pool.name}</h1>
+            <PoolStateBadge state={pool.currentState} />
           </div>
-          <p className="text-muted-foreground mt-1">Pool ID: {id}</p>
+          <p className="text-muted-foreground mt-1 text-sm font-mono">
+            Pool ID: {id.slice(0, 8)}...{id.slice(-4)}
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <History className="mr-2 h-4 w-4" />
-            Audit Log
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90">
+        <div>
+          <Button disabled title="Available after Session 4">
             <UploadCloud className="mr-2 h-4 w-4" />
             Upload Document
           </Button>
@@ -39,174 +112,153 @@ export default function PoolDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Left Sidebar (Pool Meta) */}
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Pool Details</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pool Details
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div>
-                <span className="text-muted-foreground block mb-1">Borrower</span>
-                <span className="font-medium">Apex Holdings Ltd.</span>
+                <span className="text-muted-foreground block mb-1">
+                  Borrower
+                </span>
+                <span className="font-medium">{pool.borrowerName}</span>
               </div>
               <div>
-                <span className="text-muted-foreground block mb-1">Manager</span>
-                <span className="font-medium">Capital Partners LLC</span>
+                <span className="text-muted-foreground block mb-1">
+                  Target Size
+                </span>
+                <span className="font-medium">
+                  ${Number(pool.targetSize).toLocaleString()} {pool.currency}
+                </span>
               </div>
               <div>
-                <span className="text-muted-foreground block mb-1">Target Size</span>
-                <span className="font-medium">$5,000,000 USD</span>
+                <span className="text-muted-foreground block mb-1">
+                  Encryption
+                </span>
+                <span className="font-medium">
+                  {pool.encryptionScheme === 'aes256'
+                    ? 'AES-256'
+                    : 'Seal Beta'}
+                </span>
               </div>
               <div>
-                <span className="text-muted-foreground block mb-1">Created</span>
-                <span className="font-medium">Oct 24, 2024</span>
+                <span className="text-muted-foreground block mb-1">
+                  Maturity
+                </span>
+                <span className="font-medium">{pool.expectedMaturity}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block mb-1">
+                  Created
+                </span>
+                <span className="font-medium">{pool.createdAt}</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-             <CardHeader className="pb-3">
+            <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Progress</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">45% Complete</span>
-                <span className="text-sm text-muted-foreground">9/20 items</span>
+                <span className="text-sm font-medium">0% Complete</span>
+                <span className="text-sm text-muted-foreground">0/0 items</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: '45%' }}></div>
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: '0%' }}
+                />
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Based on DD checklist completion
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Area */}
+        {/* Main: Tabs */}
         <div className="col-span-1 md:col-span-3">
-          <Tabs defaultValue="checklist" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="checklist" className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> DD Checklist
-              </TabsTrigger>
-              <TabsTrigger value="files" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" /> VDR Files
-              </TabsTrigger>
-              <TabsTrigger value="members" className="flex items-center gap-2">
-                <Users className="h-4 w-4" /> Access Control
-              </TabsTrigger>
-            </TabsList>
+          {/* Tab Bar */}
+          <div className="flex gap-0 border-b-2 border-muted mb-5">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors -mb-[2px] ${
+                    isActive
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-            <TabsContent value="checklist" className="space-y-4 shadow-sm border rounded-lg bg-card text-card-foreground">
-              <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold">Due Diligence Items</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Track and verify all required documentation for this pool.
-                </p>
-              </div>
-              <div className="p-0">
-                {/* Checklist Categories */}
-                <div className="p-4 border-b bg-muted/30">
-                  <h4 className="font-medium text-sm text-foreground">1. Legal & Corporate</h4>
-                </div>
-                {/* Items */}
-                <div className="flex items-center justify-between p-4 border-b hover:bg-muted/10 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <h5 className="font-medium">Certificate of Incorporation</h5>
-                      <p className="text-sm text-muted-foreground mt-1">Uploaded and verified by Legal Counsel.</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs">legal-cert.pdf</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground">
-                      <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>View File</DropdownMenuItem>
-                      <DropdownMenuItem>View History</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border-b hover:bg-muted/10 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <Circle className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <h5 className="font-medium">Board Resolutions authorizing the transaction</h5>
-                      <p className="text-sm text-muted-foreground mt-1">Pending upload from the Borrower.</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">Request File</Button>
-                </div>
-
-                <div className="p-4 border-b bg-muted/30">
-                  <h4 className="font-medium text-sm text-foreground">2. Financials</h4>
-                </div>
-                <div className="flex items-center justify-between p-4 hover:bg-muted/10 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <CheckCircle2 className="h-5 w-5 text-warning mt-0.5" />
-                    <div>
-                      <h5 className="font-medium">Audited Financial Statements (Last 2 Years)</h5>
-                      <p className="text-sm text-warning mt-1">Under Review by Investment Committee.</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs">audited-fs-2023.pdf</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground">
-                      <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Review File</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Reject</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="files">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Virtual Data Room</CardTitle>
-                  <CardDescription>
-                    All encrypted documents uploaded to Walrus, protected by Sui network policies.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="h-[400px] flex items-center justify-center border-t border-dashed bg-muted/10 rounded-b-xl">
-                    <div className="text-center">
-                        <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground">Files View</h3>
-                        <p className="text-sm text-muted-foreground max-w-sm mt-2">A standard file explorer view showcasing folders and decryptable files will be implemented here.</p>
-                    </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="members">
-              <Card>
-                 <CardHeader>
-                  <CardTitle>Access Control</CardTitle>
-                  <CardDescription>
-                    Manage who has decryption rights to documents within this Data Room.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="h-[400px] flex items-center justify-center border-t border-dashed bg-muted/10 rounded-b-xl">
-                    <div className="text-center">
-                        <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground">Members Management</h3>
-                        <p className="text-sm text-muted-foreground max-w-sm mt-2">Wallet addresses and roles will be displayed here, mapping to on-chain capabilities.</p>
-                    </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Tab Content */}
+          {activeTab === 'vdr' && (
+            <div className="grid grid-cols-[200px_1fr] gap-4">
+              <FolderTree
+                folders={DEFAULT_FOLDERS as any}
+                activeFolderId={activeFolderId}
+                onFolderSelect={setActiveFolderId}
+              />
+              <DocumentList
+                documents={filteredDocs}
+                isLoading={docsLoading}
+                onViewDetails={(docId) =>
+                  router.push(`/pools/${id}/documents/${docId}`)
+                }
+              />
+            </div>
+          )}
+          {activeTab === 'checklist' && (
+            <TabPlaceholder
+              icon={CheckCircle2}
+              title="DD Checklist"
+              session="Session 5a"
+            />
+          )}
+          {activeTab === 'reviews' && (
+            <TabPlaceholder
+              icon={MessageSquare}
+              title="Document Reviews"
+              session="Session 5a"
+            />
+          )}
+          {activeTab === 'ic' && (
+            <TabPlaceholder
+              icon={Landmark}
+              title="IC Decisions"
+              session="Session 5b"
+            />
+          )}
+          {activeTab === 'audit' && (
+            <TabPlaceholder
+              icon={ScrollText}
+              title="Audit Trail"
+              session="Session 5b"
+            />
+          )}
+          {activeTab === 'members' && (
+            <TabPlaceholder
+              icon={Users}
+              title="Members"
+              session="Session 5b"
+            />
+          )}
         </div>
       </div>
     </div>

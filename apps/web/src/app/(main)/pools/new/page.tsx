@@ -1,174 +1,323 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, ShieldCheck, Lock } from "lucide-react";
-import Link from "next/link";
+import { useReducer } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { useAuth } from '@/providers/auth-provider';
+import { useCreatePool } from '@/lib/api/hooks/use-create-pool';
+import { StepIndicator } from '@/components/pool/step-indicator';
+import { StepBasicInfo } from '@/components/pool/steps/step-basic-info';
+import { StepEncryption } from '@/components/pool/steps/step-encryption';
+import {
+  StepChecklist,
+  type ChecklistItemData,
+} from '@/components/pool/steps/step-checklist';
+import {
+  StepMembers,
+  type MemberInviteData,
+} from '@/components/pool/steps/step-members';
+import { StepReview } from '@/components/pool/steps/step-review';
+import { DEFAULT_DD_CHECKLIST_ITEMS } from '@/lib/default-checklist';
 
 const STEPS = [
-  "Basic Info",
-  "Encryption Engine",
-  "DD Checklist",
-  "Initial Members",
-  "Review & Confirm"
+  'Basic Info',
+  'Encryption Engine',
+  'DD Checklist',
+  'Initial Members',
+  'Review & Confirm',
 ];
 
-export default function NewPoolPage() {
-  const [currentStep, setCurrentStep] = useState(0);
+interface PoolFormState {
+  name: string;
+  borrowerEntity: string;
+  targetNotional: string;
+  currency: string;
+  maturityDate: string;
+  encryptionScheme: 0 | 1;
+  sealBetaAcknowledged: boolean;
+  checklistItems: ChecklistItemData[];
+  members: MemberInviteData[];
+  currentStep: number;
+  errors: Record<string, string>;
+  isSubmitting: boolean;
+  returnToReview: boolean;
+}
 
-  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
-  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
+type FormAction =
+  | { type: 'SET_FIELD'; field: string; value: unknown }
+  | { type: 'SET_STEP'; step: number }
+  | { type: 'SET_ERRORS'; errors: Record<string, string> }
+  | { type: 'SET_CHECKLIST'; items: ChecklistItemData[] }
+  | { type: 'SET_MEMBERS'; members: MemberInviteData[] }
+  | { type: 'SET_SUBMITTING'; value: boolean }
+  | { type: 'EDIT_FROM_REVIEW'; step: number }
+  | { type: 'RETURN_TO_REVIEW' };
+
+function formReducer(state: PoolFormState, action: FormAction): PoolFormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value, errors: {} };
+    case 'SET_STEP':
+      return { ...state, currentStep: action.step, errors: {}, returnToReview: false };
+    case 'SET_ERRORS':
+      return { ...state, errors: action.errors };
+    case 'SET_CHECKLIST':
+      return { ...state, checklistItems: action.items };
+    case 'SET_MEMBERS':
+      return { ...state, members: action.members };
+    case 'SET_SUBMITTING':
+      return { ...state, isSubmitting: action.value };
+    case 'EDIT_FROM_REVIEW':
+      return { ...state, currentStep: action.step, returnToReview: true };
+    case 'RETURN_TO_REVIEW':
+      return { ...state, currentStep: 4, returnToReview: false };
+    default:
+      return state;
+  }
+}
+
+function buildDefaultItems(): ChecklistItemData[] {
+  return DEFAULT_DD_CHECKLIST_ITEMS.map((item, idx) => ({
+    id: crypto.randomUUID(),
+    folderId: item.folderId,
+    label: item.label,
+    description: item.description ?? '',
+    requirementLevel: item.requirementLevel as 'required' | 'recommended' | 'optional',
+    expectedDocType: item.expectedDocType,
+    sortOrder: idx,
+  }));
+}
+
+function validateStep1(state: PoolFormState): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (!state.name.trim()) errors.name = 'Pool name is required';
+  if (state.name.length > 256) errors.name = 'Pool name must be 256 characters or less';
+  if (!state.borrowerEntity.trim()) errors.borrowerEntity = 'Borrower entity is required';
+  if (!state.targetNotional || Number(state.targetNotional) <= 0)
+    errors.targetNotional = 'Target notional must be greater than 0';
+  if (!state.maturityDate) errors.maturityDate = 'Maturity date is required';
+  else if (new Date(state.maturityDate) <= new Date())
+    errors.maturityDate = 'Maturity date must be in the future';
+  return errors;
+}
+
+function validateStep2(state: PoolFormState): Record<string, string> {
+  if (state.encryptionScheme === 1 && !state.sealBetaAcknowledged) {
+    return { sealBetaAcknowledged: 'Please acknowledge the Beta disclaimer' };
+  }
+  return {};
+}
+
+export default function NewPoolPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { mutateAsync: createPool, isPending } = useCreatePool();
+
+  const [state, dispatch] = useReducer(formReducer, null, () => ({
+    name: '',
+    borrowerEntity: '',
+    targetNotional: '',
+    currency: 'USD',
+    maturityDate: '',
+    encryptionScheme: 0 as 0 | 1,
+    sealBetaAcknowledged: false,
+    checklistItems: buildDefaultItems(),
+    members: [] as MemberInviteData[],
+    currentStep: 0,
+    errors: {} as Record<string, string>,
+    isSubmitting: false,
+    returnToReview: false,
+  }));
+
+  function handleFieldChange(field: string, value: unknown) {
+    dispatch({ type: 'SET_FIELD', field, value });
+  }
+
+  function handleNext() {
+    if (state.currentStep === 0) {
+      const errors = validateStep1(state);
+      if (Object.keys(errors).length > 0) {
+        dispatch({ type: 'SET_ERRORS', errors });
+        return;
+      }
+    }
+    if (state.currentStep === 1) {
+      const errors = validateStep2(state);
+      if (Object.keys(errors).length > 0) {
+        dispatch({ type: 'SET_ERRORS', errors });
+        return;
+      }
+    }
+
+    if (state.returnToReview) {
+      dispatch({ type: 'RETURN_TO_REVIEW' });
+    } else {
+      dispatch({ type: 'SET_STEP', step: state.currentStep + 1 });
+    }
+  }
+
+  function handleBack() {
+    if (state.returnToReview) {
+      dispatch({ type: 'RETURN_TO_REVIEW' });
+    } else {
+      dispatch({ type: 'SET_STEP', step: state.currentStep - 1 });
+    }
+  }
+
+  async function handleSubmit() {
+    dispatch({ type: 'SET_SUBMITTING', value: true });
+    try {
+      const poolId = await createPool({
+        name: state.name,
+        borrowerEntity: state.borrowerEntity,
+        targetNotional: state.targetNotional,
+        currency: state.currency,
+        maturityDate: state.maturityDate,
+        encryptionScheme: state.encryptionScheme,
+        tags: [],
+        members: state.members.filter((m) => m.address),
+      });
+      toast.success('Pool created successfully!');
+      router.push(`/pools/${poolId}`);
+    } catch (err: any) {
+      if (err?.message?.includes('cancelled') || err?.message?.includes('rejected')) {
+        toast.error('Transaction cancelled');
+      } else {
+        toast.error(err?.message ?? 'Failed to create pool');
+      }
+      dispatch({ type: 'SET_SUBMITTING', value: false });
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto py-8">
       <div className="mb-8">
-        <Link href="/" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Link>
         <h1 className="text-3xl font-bold tracking-tight">Create New Pool</h1>
-        <p className="text-muted-foreground mt-2">Follow the steps below to setup a new restricted data room for your credit pool.</p>
+        <p className="text-muted-foreground mt-2">
+          Follow the steps below to set up a new data room for your credit pool.
+        </p>
       </div>
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-between mb-8 relative">
-        <div className="absolute left-0 top-1/2 w-full h-0.5 bg-muted -z-10 -translate-y-1/2" />
-        {STEPS.map((step, index) => {
-          const isActive = index === currentStep;
-          const isCompleted = index < currentStep;
-          return (
-            <div key={step} className="flex flex-col items-center gap-2 bg-background px-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-colors ${isActive ? 'border-primary bg-primary text-primary-foreground' : isCompleted ? 'border-primary bg-primary/10 text-primary' : 'border-muted-foreground/30 bg-background text-muted-foreground'}`}>
-                {index + 1}
-              </div>
-              <span className={`text-xs font-medium ${isActive || isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
-                {step}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      <StepIndicator steps={STEPS} currentStep={state.currentStep} />
 
-      {/* Form Content */}
       <Card className="border-border shadow-sm">
         <CardHeader>
-          <CardTitle>{STEPS[currentStep]}</CardTitle>
+          <CardTitle>{STEPS[state.currentStep]}</CardTitle>
           <CardDescription>
-            {currentStep === 0 && "Provide basic details about the new credit pool."}
-            {currentStep === 1 && "Select the underlying cryptographic protocol to secure your files."}
-            {currentStep === 2 && "Customize the Due Diligence checklist template."}
-            {currentStep === 3 && "Invite the initial members and reviewers."}
-            {currentStep === 4 && "Review your pool configuration before submission."}
+            {state.currentStep === 0 &&
+              'Provide basic details about the new credit pool.'}
+            {state.currentStep === 1 &&
+              'Select the cryptographic protocol to secure your files.'}
+            {state.currentStep === 2 &&
+              'Customize the Due Diligence checklist template.'}
+            {state.currentStep === 3 &&
+              'Invite initial members and reviewers.'}
+            {state.currentStep === 4 &&
+              'Review your pool configuration before submission.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[300px]">
-          {/* Step 1: Basic Info */}
-          {currentStep === 0 && (
-            <div className="grid gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="pool-name">Pool Name <span className="text-destructive">*</span></Label>
-                <Input id="pool-name" placeholder="e.g. Apex Series A Secured Notes" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="borrower-name">Borrower Entity <span className="text-destructive">*</span></Label>
-                <Input id="borrower-name" placeholder="e.g. Apex Holdings Ltd." />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="target-notional">Target Notional</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                    <Input id="target-notional" type="number" placeholder="5,000,000" className="pl-7" />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Input id="currency" defaultValue="USD" />
-                </div>
-              </div>
-            </div>
+          {state.currentStep === 0 && (
+            <StepBasicInfo
+              name={state.name}
+              borrowerEntity={state.borrowerEntity}
+              targetNotional={state.targetNotional}
+              currency={state.currency}
+              maturityDate={state.maturityDate}
+              errors={state.errors}
+              onChange={handleFieldChange}
+            />
           )}
-
-          {/* Step 2: Encryption Engine */}
-          {currentStep === 1 && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="border-2 rounded-xl p-6 cursor-pointer hover:border-primary border-primary bg-primary/5 transition-colors">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-background rounded-lg shadow-sm border">
-                    <Lock className="h-6 w-6 text-foreground" />
-                  </div>
-                  <div className="h-4 w-4 rounded-full border-4 border-primary bg-background" />
-                </div>
-                <h3 className="font-semibold text-lg">AES-256 Production</h3>
-                <p className="text-sm text-muted-foreground mt-2">Industry standard symmetric encryption. Keys are distributed on-chain via public keys.</p>
-              </div>
-
-              <div className="border-2 rounded-xl p-6 cursor-pointer hover:border-primary border-border transition-colors group relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-warning text-warning-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
-                  Beta - 10% Off
-                </div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-background rounded-lg shadow-sm border">
-                    <ShieldCheck className="h-6 w-6 text-warning" />
-                  </div>
-                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground bg-background group-hover:border-primary transition-colors" />
-                </div>
-                <h3 className="font-semibold text-lg">Seal Beta</h3>
-                <p className="text-sm text-muted-foreground mt-2">Threshold encryption via Sui Seal. Innovative on-chain policy enforcement.</p>
-              </div>
-            </div>
+          {state.currentStep === 1 && (
+            <StepEncryption
+              encryptionScheme={state.encryptionScheme}
+              sealBetaAcknowledged={state.sealBetaAcknowledged}
+              onChange={handleFieldChange}
+            />
           )}
-
-          {/* Placeholders for subsequent steps */}
-          {currentStep > 1 && currentStep < 4 && (
-            <div className="flex h-[200px] items-center justify-center border-2 border-dashed rounded-lg bg-muted/20">
-              <p className="text-muted-foreground font-medium">Interactive components for {STEPS[currentStep]} to be implemented.</p>
-            </div>
+          {state.currentStep === 2 && (
+            <StepChecklist
+              items={state.checklistItems}
+              onItemsChange={(items) =>
+                dispatch({ type: 'SET_CHECKLIST', items })
+              }
+            />
           )}
-
-          {currentStep === 4 && (
-            <div className="rounded-lg border bg-card p-6 shadow-sm">
-                <h3 className="font-semibold text-lg mb-4">Summary</h3>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Pool Name</dt>
-                    <dd className="font-medium mt-1">Apex Series A Secured Notes</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Borrower</dt>
-                    <dd className="font-medium mt-1">Apex Holdings Ltd.</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Target Size</dt>
-                    <dd className="font-medium mt-1">$5,000,000 (USD)</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Encryption Engine</dt>
-                    <dd className="font-medium mt-1 inline-flex items-center gap-1.5"><Lock className="h-3 w-3"/> AES-256 Production</dd>
-                  </div>
-                </dl>
-                <div className="mt-8 p-4 bg-muted/50 rounded-md border text-sm text-muted-foreground">
-                  By clicking submit, you will be prompted to sign a <strong>Sui Transaction</strong> to officially create this Data Room object on-chain.
-                </div>
-            </div>
+          {state.currentStep === 3 && (
+            <StepMembers
+              members={state.members}
+              currentUserAddress={user?.address ?? ''}
+              errors={state.errors}
+              onMembersChange={(members) =>
+                dispatch({ type: 'SET_MEMBERS', members })
+              }
+              onSkip={handleNext}
+            />
           )}
-
+          {state.currentStep === 4 && (
+            <StepReview
+              name={state.name}
+              borrowerEntity={state.borrowerEntity}
+              targetNotional={state.targetNotional}
+              currency={state.currency}
+              maturityDate={state.maturityDate}
+              encryptionScheme={state.encryptionScheme}
+              checklistItems={state.checklistItems}
+              members={state.members}
+              onEditStep={(step) =>
+                dispatch({ type: 'EDIT_FROM_REVIEW', step })
+              }
+            />
+          )}
         </CardContent>
         <CardFooter className="flex justify-between border-t pt-6 bg-muted/10">
-          <Button variant="outline" onClick={prevStep} disabled={currentStep === 0}>
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={state.currentStep === 0 || state.isSubmitting}
+          >
             Back
           </Button>
-          {currentStep < STEPS.length - 1 ? (
-            <Button onClick={nextStep} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {state.currentStep < STEPS.length - 1 ? (
+            <Button
+              onClick={handleNext}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
               Next Step
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
-              Confirm & Submit
+            <Button
+              onClick={handleSubmit}
+              disabled={state.isSubmitting || isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {state.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Confirm & Submit'
+              )}
             </Button>
           )}
         </CardFooter>
