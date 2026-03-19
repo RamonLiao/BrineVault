@@ -75,3 +75,29 @@ describe('PoolDetailPage', () => {
     expect(screen.getByText('No documents yet')).toBeInTheDocument();
   });
 });
+
+describe('PoolDetail — Monkey Tests', () => {
+  it('renders sidebar pool details correctly', async () => {
+    await renderDetail();
+    expect(screen.getByText('Test Corp')).toBeInTheDocument();
+    expect(screen.getByText('$1,000,000 USD')).toBeInTheDocument();
+    expect(screen.getByText('AES-256')).toBeInTheDocument();
+    expect(screen.getByText('2027-01-01')).toBeInTheDocument();
+  });
+
+  it('shows progress card with 0%', async () => {
+    await renderDetail();
+    expect(screen.getByText('0% Complete')).toBeInTheDocument();
+  });
+
+  it('shows Back to Dashboard link', async () => {
+    await renderDetail();
+    expect(screen.getByText('Back to Dashboard')).toBeInTheDocument();
+  });
+
+  it('shows truncated pool ID', async () => {
+    await renderDetail();
+    // pool-1 is short, so check the pattern exists
+    expect(screen.getByText(/Pool ID:/)).toBeInTheDocument();
+  });
+});

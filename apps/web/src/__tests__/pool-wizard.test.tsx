@@ -108,3 +108,99 @@ describe('NewPoolPage', () => {
     expect(screen.getByText('Confirm & Submit')).toBeInTheDocument();
   });
 });
+
+describe('Wizard — Monkey Tests', () => {
+  it('handles extremely long pool name (256 chars)', () => {
+    render(<NewPoolPage />);
+    const input = screen.getByLabelText(/Pool Name/);
+    fireEvent.change(input, { target: { value: 'A'.repeat(256) } });
+    fireEvent.change(screen.getByLabelText(/Borrower Entity/), {
+      target: { value: 'Corp' },
+    });
+    fireEvent.change(screen.getByLabelText(/Target Notional/), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByLabelText(/Maturity Date/), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.click(screen.getByText('Next Step'));
+    // Should proceed to step 2 — 256 is the max
+    expect(screen.getByText('AES-256 Production')).toBeInTheDocument();
+  });
+
+  it('rejects past maturity date', () => {
+    render(<NewPoolPage />);
+    fireEvent.change(screen.getByLabelText(/Pool Name/), {
+      target: { value: 'Test' },
+    });
+    fireEvent.change(screen.getByLabelText(/Borrower Entity/), {
+      target: { value: 'Corp' },
+    });
+    fireEvent.change(screen.getByLabelText(/Target Notional/), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByLabelText(/Maturity Date/), {
+      target: { value: '2020-01-01' },
+    });
+    fireEvent.click(screen.getByText('Next Step'));
+    expect(screen.getByText(/Maturity date must be in the future/i)).toBeInTheDocument();
+  });
+
+  it('rejects negative target notional', () => {
+    render(<NewPoolPage />);
+    fireEvent.change(screen.getByLabelText(/Pool Name/), {
+      target: { value: 'Test' },
+    });
+    fireEvent.change(screen.getByLabelText(/Borrower Entity/), {
+      target: { value: 'Corp' },
+    });
+    fireEvent.change(screen.getByLabelText(/Target Notional/), {
+      target: { value: '-500' },
+    });
+    fireEvent.change(screen.getByLabelText(/Maturity Date/), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.click(screen.getByText('Next Step'));
+    expect(screen.getByText(/Target notional must be greater than 0/i)).toBeInTheDocument();
+  });
+
+  it('rejects zero target notional', () => {
+    render(<NewPoolPage />);
+    fireEvent.change(screen.getByLabelText(/Pool Name/), {
+      target: { value: 'Test' },
+    });
+    fireEvent.change(screen.getByLabelText(/Borrower Entity/), {
+      target: { value: 'Corp' },
+    });
+    fireEvent.change(screen.getByLabelText(/Target Notional/), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText(/Maturity Date/), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.click(screen.getByText('Next Step'));
+    expect(screen.getByText(/Target notional must be greater than 0/i)).toBeInTheDocument();
+  });
+
+  it('rejects empty borrower entity', () => {
+    render(<NewPoolPage />);
+    fireEvent.change(screen.getByLabelText(/Pool Name/), {
+      target: { value: 'Test' },
+    });
+    // Leave borrower empty
+    fireEvent.change(screen.getByLabelText(/Target Notional/), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByLabelText(/Maturity Date/), {
+      target: { value: '2027-01-01' },
+    });
+    fireEvent.click(screen.getByText('Next Step'));
+    expect(screen.getByText(/Borrower entity is required/i)).toBeInTheDocument();
+  });
+
+  it('back button is disabled on step 1', () => {
+    render(<NewPoolPage />);
+    const backBtn = screen.getByText('Back');
+    expect(backBtn.closest('button')).toBeDisabled();
+  });
+});
