@@ -27,6 +27,16 @@ vi.mock('@mysten/sui/verify', () => ({
   verifyPersonalMessageSignature: vi.fn(),
 }));
 
+vi.mock('@mysten/sui/zklogin', () => ({
+  jwtToAddress: vi.fn().mockReturnValue('0x' + 'c'.repeat(64)),
+}));
+
+vi.mock('@mysten/sui/client', () => ({
+  SuiClient: vi.fn().mockImplementation(() => ({
+    getLatestSuiSystemState: vi.fn().mockResolvedValue({ epoch: '50' }),
+  })),
+}));
+
 describe('AuthService', () => {
   let authService: AuthService;
   let jwtService: JwtService;
@@ -44,6 +54,7 @@ describe('AuthService', () => {
       consumeChallenge: vi.fn(),
       createSession: vi.fn().mockResolvedValue('test-sid'),
       getSession: vi.fn(),
+      getSessionByRefreshHash: vi.fn(),
       updateSession: vi.fn().mockResolvedValue(undefined),
       deleteSession: vi.fn().mockResolvedValue(undefined),
       blacklistToken: vi.fn().mockResolvedValue(undefined),
@@ -59,6 +70,13 @@ describe('AuthService', () => {
         },
       ]),
       findByWalletAddress: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: 'user-123',
+        primaryWalletAddress: mockAddress,
+        displayName: 'Test User',
+        orgId: 'org-1',
+        roleInOrg: 3,
+      }),
     };
 
     authService = new AuthService(jwtService, sessionService, usersRepo);
@@ -244,6 +262,69 @@ describe('AuthService', () => {
       const [, hmac] = token.split('.');
       const fakeRandom = 'a'.repeat(64);
       expect(authService.verifyCsrfToken(`${fakeRandom}.${hmac}`)).toBe(false);
+    });
+  });
+
+  // ─── verifyZkLogin ──────────────────────────────────────
+
+  describe('verifyZkLogin', () => {
+    const validJwt = [
+      btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })),
+      btoa(JSON.stringify({ iss: 'https://accounts.google.com', sub: 'user123', aud: 'test', exp: 9999999999 })),
+      'fakesig',
+    ].map(s => s.replace(/=/g, '')).join('.');
+
+    const validDto = {
+      jwt: validJwt,
+      zkProof: {
+        proofPoints: { a: ['1'], b: [['2']], c: ['3'] },
+        issBase64Details: { value: 'base64iss', indexMod4: 1 },
+        headerBase64: 'base64header',
+      },
+      ephemeralPubKey: 'ephemeral-pub-key',
+      maxEpoch: 55, // within range of current epoch 50
+      salt: 'test-salt',
+    };
+
+    it('happy path: returns accessToken and user', async () => {
+      const result = await authService.verifyZkLogin(validDto, '127.0.0.1', 'TestAgent');
+      expect(result.accessToken).toBeTypeOf('string');
+      expect(result.refreshToken).toBeTypeOf('string');
+      expect(result.user.address).toBe('0x' + 'c'.repeat(64));
+      expect(sessionService.createSession).toHaveBeenCalled();
+    });
+
+    it('throws INVALID_JWT when JWT has no iss', async () => {
+      const badJwt = [
+        btoa(JSON.stringify({ alg: 'RS256' })),
+        btoa(JSON.stringify({ sub: 'user123' })),
+        'fake',
+      ].map(s => s.replace(/=/g, '')).join('.');
+
+      await expect(
+        authService.verifyZkLogin({ ...validDto, jwt: badJwt }, '127.0.0.1', ''),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws EXPIRED_EPOCH when maxEpoch < currentEpoch', async () => {
+      await expect(
+        authService.verifyZkLogin({ ...validDto, maxEpoch: 40 }, '127.0.0.1', ''),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws INVALID_EPOCH when maxEpoch too far in future', async () => {
+      await expect(
+        authService.verifyZkLogin({ ...validDto, maxEpoch: 100 }, '127.0.0.1', ''),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws INVALID_ZK_PROOF when proof is malformed', async () => {
+      await expect(
+        authService.verifyZkLogin({
+          ...validDto,
+          zkProof: { proofPoints: { a: [], b: [], c: [] }, issBase64Details: { value: '', indexMod4: 0 }, headerBase64: '' },
+        }, '127.0.0.1', ''),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

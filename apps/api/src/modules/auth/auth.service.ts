@@ -38,7 +38,7 @@ export class AuthService {
     }
 
     // 2. Verify signature
-    const message = `Sign in to RWA Data Room\nNonce: ${dto.nonce}\nTimestamp: ${challengeData.timestamp}`;
+    const message = `Sign in to BrineVault\nNonce: ${dto.nonce}\nTimestamp: ${challengeData.timestamp}`;
     const messageBytes = new TextEncoder().encode(message);
 
     try {
@@ -92,6 +92,79 @@ export class AuthService {
     };
   }
 
+  async verifyZkLogin(
+    dto: { jwt: string; zkProof: any; ephemeralPubKey: string; maxEpoch: number; salt: string },
+    ip: string,
+    userAgent: string,
+  ) {
+    // 1. Decode JWT
+    const { decodeJwt } = await import('jose');
+    const payload = decodeJwt(dto.jwt);
+    if (!payload.iss || !payload.sub) {
+      throw new UnauthorizedException({ code: 'INVALID_JWT', message: 'JWT missing iss or sub' });
+    }
+
+    // 2. Derive Sui address
+    const { jwtToAddress } = await import('@mysten/sui/zklogin');
+    const address = jwtToAddress(dto.jwt, dto.salt, false);
+
+    // 3. Verify maxEpoch
+    const env = loadEnv();
+    const clientModule = await import('@mysten/sui/client');
+    // SuiClient was renamed to CoreClient in @mysten/sui v2; cast for compat
+    const ClientClass = (clientModule as any).SuiClient ?? (clientModule as any).CoreClient;
+    const suiClient = new ClientClass({ url: env.SUI_RPC_URL });
+    // API name varies by version: getLatestSuiSystemState (v1) vs getCurrentSystemState (v2)
+    const systemState = await (suiClient.getLatestSuiSystemState?.() ?? suiClient.getCurrentSystemState?.());
+    const currentEpoch = Number(systemState?.epoch ?? systemState?.systemState?.epoch);
+    const MAX_EPOCH_AHEAD = 10;
+
+    if (dto.maxEpoch < currentEpoch) {
+      throw new UnauthorizedException({ code: 'EXPIRED_EPOCH', message: 'maxEpoch is in the past' });
+    }
+    if (dto.maxEpoch > currentEpoch + MAX_EPOCH_AHEAD) {
+      throw new UnauthorizedException({ code: 'INVALID_EPOCH', message: 'maxEpoch too far in the future' });
+    }
+
+    // 4. Verify ZK proof structure (Groth16 verification deferred)
+    if (
+      !dto.zkProof?.proofPoints?.a?.length ||
+      !dto.zkProof?.proofPoints?.b?.length ||
+      !dto.zkProof?.proofPoints?.c?.length
+    ) {
+      throw new UnauthorizedException({ code: 'INVALID_ZK_PROOF', message: 'Malformed ZK proof structure' });
+    }
+
+    // 5. Upsert user
+    const [user] = await this.usersRepo.upsertByWallet({ primaryWalletAddress: address });
+
+    // 6. Create session + JWT
+    const refreshToken = this.jwtService.generateRefreshToken();
+    const refreshTokenHash = this.jwtService.hashRefreshToken(refreshToken);
+    const sid = await this.sessionService.createSession(
+      user.id, address, user.orgId ?? null, refreshTokenHash, ip, userAgent,
+    );
+    const accessToken = await this.jwtService.signAccessToken({
+      sub: user.id,
+      address,
+      orgId: user.orgId ?? null,
+      orgRole: user.roleInOrg ?? 0,
+      sid,
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        address,
+        displayName: null,
+        orgId: user.orgId ?? null,
+        roleInOrg: user.roleInOrg ?? 0,
+      },
+    };
+  }
+
   async refresh(refreshToken: string, sid: string) {
     // 1. Hash incoming refresh token
     const incomingHash = this.jwtService.hashRefreshToken(refreshToken);
@@ -125,7 +198,53 @@ export class AuthService {
       sid,
     });
 
-    return { accessToken, refreshToken: newRefreshToken };
+    const user = await this.usersRepo.findById(session.userId);
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: session.userId,
+        address: session.address,
+        displayName: user?.displayName ?? null,
+        orgId: session.orgId,
+        roleInOrg: user?.roleInOrg ?? 0,
+      },
+    };
+  }
+
+  async refreshByCookie(refreshToken: string) {
+    const incomingHash = this.jwtService.hashRefreshToken(refreshToken);
+    const session = await this.sessionService.getSessionByRefreshHash(incomingHash);
+    if (!session) {
+      throw new UnauthorizedException({ code: 'SESSION_EXPIRED', message: 'Session expired or not found' });
+    }
+
+    const newRefreshToken = this.jwtService.generateRefreshToken();
+    const newHash = this.jwtService.hashRefreshToken(newRefreshToken);
+    await this.sessionService.updateSession(session.id, newHash);
+
+    const accessToken = await this.jwtService.signAccessToken({
+      sub: session.userId,
+      address: session.address,
+      orgId: session.orgId,
+      orgRole: 0,
+      sid: session.id,
+    });
+
+    const user = await this.usersRepo.findById(session.userId);
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: session.userId,
+        address: session.address,
+        displayName: user?.displayName ?? null,
+        orgId: session.orgId,
+        roleInOrg: user?.roleInOrg ?? 0,
+      },
+    };
   }
 
   async logout(sid: string, jti: string, exp: number) {

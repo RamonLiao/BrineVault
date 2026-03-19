@@ -11,8 +11,8 @@ import {
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
-import { authVerifyRequestSchema } from '@rwa-dataroom/shared';
-import type { AuthVerifyRequest } from '@rwa-dataroom/shared';
+import { authVerifyRequestSchema, verifyZkLoginRequestSchema } from '@rwa-dataroom/shared';
+import type { AuthVerifyRequest, VerifyZkLoginRequest } from '@rwa-dataroom/shared';
 import { Public } from '../../common/decorators/public.decorator.js';
 
 @Controller('auth')
@@ -45,28 +45,16 @@ export class AuthController {
   }
 
   @Public()
-  @Post('refresh')
-  async refresh(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = (req as any).cookies?.refresh_token as string | undefined;
-    if (!refreshToken) {
-      throw new UnauthorizedException({ code: 'MISSING_REFRESH_TOKEN', message: 'No refresh token' });
-    }
-
-    // Extract sid from the (possibly expired) access token in Authorization header
-    const authHeader = req.headers.authorization;
-    let sid: string;
-    if (authHeader?.startsWith('Bearer ')) {
-      const { decodeJwt } = await import('jose');
-      const payload = decodeJwt(authHeader.slice(7));
-      sid = payload.sid as string;
-    } else {
-      throw new UnauthorizedException({
-        code: 'MISSING_TOKEN',
-        message: 'No access token for session reference',
-      });
-    }
-
-    const result = await this.authService.refresh(refreshToken, sid);
+  @Post('verify-zklogin')
+  @UsePipes(new ZodValidationPipe(verifyZkLoginRequestSchema))
+  async verifyZkLogin(
+    @Body() dto: VerifyZkLoginRequest,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.verifyZkLogin(
+      dto, req.ip ?? '0.0.0.0', req.headers['user-agent'] ?? '',
+    );
     res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
       secure: true,
@@ -74,7 +62,42 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/v1/auth',
     });
-    return res.json({ access_token: result.accessToken });
+    return res.json({ access_token: result.accessToken, user: result.user });
+  }
+
+  @Public()
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const refreshToken = (req as any).cookies?.refresh_token as string | undefined;
+    if (!refreshToken) {
+      throw new UnauthorizedException({ code: 'MISSING_REFRESH_TOKEN', message: 'No refresh token' });
+    }
+
+    // Try to extract sid from Authorization header (optional — for backward compat)
+    let sid: string | undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const { decodeJwt } = await import('jose');
+        const payload = decodeJwt(authHeader.slice(7));
+        sid = payload.sid as string;
+      } catch {
+        // Token may be expired/malformed — that's OK, we'll look up by hash
+      }
+    }
+
+    const result = sid
+      ? await this.authService.refresh(refreshToken, sid)
+      : await this.authService.refreshByCookie(refreshToken);
+
+    res.cookie('refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/v1/auth',
+    });
+    return res.json({ access_token: result.accessToken, user: result.user });
   }
 
   @Post('logout')

@@ -95,6 +95,25 @@ export class SessionService {
     await this.redis.set(key, JSON.stringify(data), 'EX', ttl);
   }
 
+  async getSessionByRefreshHash(refreshTokenHash: string): Promise<(SessionData & { id: string }) | null> {
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redis.scan(cursor, 'MATCH', 'session:*', 'COUNT', 100);
+      cursor = nextCursor;
+      if (keys.length === 0) continue;
+      const values = await this.redis.mget(...keys);
+      for (let i = 0; i < keys.length; i++) {
+        const raw = values[i];
+        if (!raw) continue;
+        const data = JSON.parse(raw) as SessionData;
+        if (data.refreshTokenHash === refreshTokenHash) {
+          return { ...data, id: keys[i].replace('session:', '') };
+        }
+      }
+    } while (cursor !== '0');
+    return null;
+  }
+
   async deleteSession(sid: string): Promise<void> {
     await this.redis.del(`session:${sid}`);
   }

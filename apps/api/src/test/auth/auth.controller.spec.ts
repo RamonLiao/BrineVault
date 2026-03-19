@@ -40,6 +40,17 @@ describe('AuthController', () => {
       refresh: vi.fn().mockResolvedValue({
         accessToken: 'new-access-token',
         refreshToken: 'new-refresh-token',
+        user: { id: 'user-1', address: mockAddress, displayName: null, orgId: null, roleInOrg: 0 },
+      }),
+      refreshByCookie: vi.fn().mockResolvedValue({
+        accessToken: 'cookie-access-token',
+        refreshToken: 'cookie-refresh-token',
+        user: { id: 'user-1', address: mockAddress, displayName: null, orgId: null, roleInOrg: 0 },
+      }),
+      verifyZkLogin: vi.fn().mockResolvedValue({
+        accessToken: 'zk-access-token',
+        refreshToken: 'zk-refresh-token',
+        user: { id: 'user-zk', address: mockAddress, displayName: null, orgId: null, roleInOrg: 0 },
       }),
       logout: vi.fn().mockResolvedValue(undefined),
       generateCsrfToken: vi.fn().mockReturnValue('random.hmac'),
@@ -134,6 +145,47 @@ describe('AuthController', () => {
     });
   });
 
+  // ─── POST /verify-zklogin ────────────────────────────────
+
+  describe('POST /verify-zklogin', () => {
+    const mockZkLoginDto = {
+      jwt: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test',
+      zkProof: {
+        proofPoints: { a: ['1'], b: [['2']], c: ['3'] },
+        issBase64Details: { value: 'base64iss', indexMod4: 1 },
+        headerBase64: 'base64header',
+      },
+      ephemeralPubKey: 'ephemeral-pub-key-hex',
+      maxEpoch: 100,
+      salt: 'user-salt-hex',
+    };
+
+    it('returns access_token and user on success', async () => {
+      const req = { ip: '127.0.0.1', headers: { 'user-agent': 'test' } } as any;
+      const res = {
+        cookie: vi.fn(),
+        json: vi.fn((body: any) => body),
+      } as any;
+
+      await controller.verifyZkLogin(mockZkLoginDto as any, req, res);
+
+      expect(authService.verifyZkLogin).toHaveBeenCalledWith(
+        mockZkLoginDto,
+        '127.0.0.1',
+        'test',
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'zk-refresh-token',
+        expect.objectContaining({ httpOnly: true, secure: true }),
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        access_token: 'zk-access-token',
+        user: { id: 'user-zk', address: mockAddress, displayName: null, orgId: null, roleInOrg: 0 },
+      });
+    });
+  });
+
   // ─── POST /refresh ───────────────────────────────────────
 
   describe('POST /refresh', () => {
@@ -144,11 +196,30 @@ describe('AuthController', () => {
       await expect(controller.refresh(req, res)).rejects.toThrow(UnauthorizedException);
     });
 
-    it('throws MISSING_TOKEN when no Authorization header', async () => {
+    it('refreshes via cookie when no Authorization header', async () => {
       const req = { cookies: { refresh_token: 'token' }, headers: {} } as any;
-      const res = {} as any;
+      const res = {
+        cookie: vi.fn(),
+        json: vi.fn((body: any) => body),
+      } as any;
+      await controller.refresh(req, res);
+      expect(authService.refreshByCookie).toHaveBeenCalledWith('token');
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        access_token: 'cookie-access-token',
+      }));
+    });
 
-      await expect(controller.refresh(req, res)).rejects.toThrow(UnauthorizedException);
+    it('refreshes via sid when Authorization header present', async () => {
+      const req = {
+        cookies: { refresh_token: 'token' },
+        headers: { authorization: 'Bearer eyJhbGciOiJFZERTQSJ9.eyJzaWQiOiJ0ZXN0LXNpZCJ9.fake' },
+      } as any;
+      const res = {
+        cookie: vi.fn(),
+        json: vi.fn((body: any) => body),
+      } as any;
+      await controller.refresh(req, res);
+      expect(authService.refresh).toHaveBeenCalledWith('token', 'test-sid');
     });
   });
 });
