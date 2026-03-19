@@ -22,7 +22,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
       <Link href="/dashboard" className="flex items-center gap-2">
         <Shield className="size-5 text-primary" />
-        <span className="text-sm font-semibold tracking-tight">RWA DataRoom</span>
+        <span className="text-sm font-semibold tracking-tight">BrineVault</span>
       </Link>
 
       <div className="flex-1" />

@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'RWA DataRoom',
-  description: 'Compliance-grade on-chain Virtual Data Room for structured credit',
+  title: 'BrineVault',
+  description: 'Institutional-grade data vault for Real-World Assets',
 };
 
 export default function RootLayout({
