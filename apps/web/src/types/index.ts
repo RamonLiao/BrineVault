@@ -18,7 +18,22 @@ export type PoolState =
   | 'approved_internal'
   | 'ready_to_issue'
   | 'rejected'
-  | 'cancelled';
+  | 'cancelled'
+  | 'issued'
+  | 'closed';
+
+// --- Pool State Labels ---
+export const POOL_STATE_LABELS: Record<PoolState, string> = {
+  draft: 'Draft',
+  dd_in_progress: 'DD In Progress',
+  ic_review: 'IC Review',
+  approved_internal: 'Approved (Internal)',
+  ready_to_issue: 'Ready to Issue',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+  issued: 'Issued',
+  closed: 'Closed',
+};
 
 // --- Encryption scheme ---
 export type EncryptionScheme = 'aes256' | 'seal_beta';
@@ -78,6 +93,26 @@ export interface Pool {
 
 // --- Pool Detail Tab ---
 export type PoolTab = 'vdr' | 'checklist' | 'reviews' | 'ic' | 'audit' | 'members';
+
+// --- Document ---
+export interface Document {
+  id: string;
+  poolId: string;
+  folderId: number;
+  title: string;
+  docType: number;
+  currentVersion: number;
+  versionCount: number;
+  requiredFlag: boolean;
+  isArchived: boolean;
+  visibleToRoles: number;
+  encryptionScheme: number;
+  tags: string[];
+  createdBy: string;
+  createdAt: string;
+  lastUpdatedAt: string;
+  approvalCount: number;
+}
 
 // --- API Error Envelope ---
 export interface ApiError {

@@ -3,8 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FolderKanban, ShieldCheck, PieChart, Users, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PoolStateBadge } from '@/components/pool/pool-state-badge';
 import Link from 'next/link';
 import { usePoolList, usePoolStats } from '@/lib/api/hooks/use-pools';
 
@@ -119,16 +119,7 @@ export default function DashboardPage() {
                           {pool.borrowerName}
                         </CardDescription>
                       </div>
-                      <Badge
-                        variant={pool.currentState === 'dd_in_progress' ? 'default' : 'secondary'}
-                        className={
-                          pool.currentState === 'dd_in_progress'
-                            ? 'bg-primary/20 text-primary border-primary/30'
-                            : ''
-                        }
-                      >
-                        {pool.currentState.replace(/_/g, ' ')}
-                      </Badge>
+                      <PoolStateBadge state={pool.currentState} />
                     </div>
                   </CardHeader>
                   <CardContent>
